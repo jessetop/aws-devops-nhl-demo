@@ -24,13 +24,26 @@ A comprehensive DevOps demonstration featuring multiple microservices, CI/CD pip
 - GitHub account with repository
 
 ### 1. Deploy Infrastructure
+
+**Windows (PowerShell):**
 ```powershell
 # Clone and navigate to project
 git clone https://github.com/your-username/aws-devops-pipeline-demo
 cd aws-devops-pipeline-demo
 
 # Deploy using PowerShell script
-.\deploy.ps1 -GitHubRepo "your-username/aws-devops-pipeline-demo" -GitHubToken "your-github-token"
+.\windows\windows-setup-infrastructure.ps1 -GitHubOrg "your-username" -GitHubToken "your-github-token"
+```
+
+**Linux/macOS (Bash):**
+```bash
+# Clone and navigate to project
+git clone https://github.com/your-username/aws-devops-pipeline-demo
+cd aws-devops-pipeline-demo
+
+# Make scripts executable and deploy
+chmod +x linux/*.sh
+./linux/setup-infrastructure.sh your-username aws-devops-pipeline-demo your-github-token
 ```
 
 ### 2. Configure GitHub Secrets
@@ -39,12 +52,15 @@ Add these secrets to your GitHub repository:
 - `AWS_SECRET_ACCESS_KEY`
 
 ### 3. Configure EKS
-```bash
-# Update kubeconfig
-aws eks update-kubeconfig --region us-east-1 --name nhl-stats-cluster
 
-# Deploy stats processing service
-kubectl apply -f stats-processing-service/k8s-deployment.yaml
+**Windows:**
+```powershell
+.\windows\windows-deploy-to-eks.ps1
+```
+
+**Linux/macOS:**
+```bash
+./linux/deploy-to-eks.sh
 ```
 
 ## Service Details
