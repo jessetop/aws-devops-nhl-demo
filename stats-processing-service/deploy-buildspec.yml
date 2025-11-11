@@ -16,7 +16,7 @@ phases:
       - echo "Substituting ECR image details..."
       - sed "s/ACCOUNT_ID/$AWS_ACCOUNT_ID/g" stats-processing-service/k8s-deployment.yaml > /tmp/k8s-deployment.yaml
       - sed -i "s/REGION/$AWS_DEFAULT_REGION/g" /tmp/k8s-deployment.yaml
-      - sed -i "s/stats-processing/$ECR_REPOSITORY_NAME/g" /tmp/k8s-deployment.yaml
+      - sed -i "s/stats-processing:latest/$ECR_REPOSITORY_NAME:latest/g" /tmp/k8s-deployment.yaml
       - echo "Final deployment file:"
       - cat /tmp/k8s-deployment.yaml
       - kubectl apply -f /tmp/k8s-deployment.yaml

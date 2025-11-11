@@ -8,6 +8,7 @@ def lambda_handler(event, context):
     <!DOCTYPE html>
     <html>
     <head>
+        <meta charset="UTF-8">
         <title>NHL Stats Dashboard</title>
         <style>
             body { font-family: Arial, sans-serif; margin: 40px; }
@@ -21,7 +22,7 @@ def lambda_handler(event, context):
     </head>
     <body>
         <div class="container">
-            <h1>🏒 NHL Stats Dashboard</h1>
+            <h1>&#127954; NHL Stats Dashboard</h1>
             
             <div class="service-box">
                 <h2>NHL API Service (Lambda + GitHub Actions)</h2>
@@ -38,9 +39,9 @@ def lambda_handler(event, context):
             <div class="service-box">
                 <h2>Service Status</h2>
                 <div id="service-status">
-                    <p>✅ Web Frontend: Active (Lambda + CodePipeline)</p>
-                    <p>🔄 NHL API Service: <span id="nhl-api-status">Check endpoint</span></p>
-                    <p>🔄 Stats Processing: <span id="stats-processing-status">Check endpoint</span></p>
+                    <p>&#9989; Web Frontend: Active (Lambda + CodePipeline)</p>
+                    <p>&#128260; NHL API Service: <span id="nhl-api-status">Check endpoint</span></p>
+                    <p>&#128260; Stats Processing: <span id="stats-processing-status">Check endpoint</span></p>
                     <p><small>Update API endpoints in code to connect to real services</small></p>
                 </div>
             </div>
@@ -69,7 +70,7 @@ def lambda_handler(event, context):
                     });
                     html += '</div>';
                     html += `<p><small>Last updated: ${data.timestamp}</small></p>`;
-                    html += `<p><small>🚀 Data from NHL API Lambda (GitHub Actions)</small></p>`;
+                    html += `<p><small>&#128640; Data from NHL API Lambda (GitHub Actions)</small></p>`;
                     
                     document.getElementById('nhl-stats').innerHTML = html;
                 } catch (error) {
@@ -95,7 +96,7 @@ def lambda_handler(event, context):
                     });
                     html += '</div>';
                     html += `<p><small>Processed ${data.processed_teams} teams</small></p>`;
-                    html += `<p><small>🚀 Data from EKS Stats Processing (CodePipeline)</small></p>`;
+                    html += `<p><small>&#128640; Data from EKS Stats Processing (CodePipeline)</small></p>`;
                     
                     document.getElementById('processed-stats').innerHTML = html;
                 } catch (error) {
@@ -111,7 +112,7 @@ def lambda_handler(event, context):
     return {
         'statusCode': 200,
         'headers': {
-            'Content-Type': 'text/html',
+            'Content-Type': 'text/html; charset=utf-8',
         },
         'body': html_content
     }
