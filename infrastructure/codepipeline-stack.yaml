@@ -220,6 +220,11 @@ Resources:
                 ActionMode: CREATE_UPDATE
                 StackName: !Sub '${StackName}-web-frontend-stack'
                 TemplatePath: BuildOutput::web-frontend/packaged-template.yaml
+                ParameterOverrides: |
+                  {
+                    "NHLApiEndpoint": "https://YOUR_NHL_API_GATEWAY_URL/prod/nhl-stats",
+                    "StatsProcessingEndpoint": "http://YOUR_EKS_LOADBALANCER_URL/process-stats"
+                  }
                 Capabilities: CAPABILITY_IAM,CAPABILITY_AUTO_EXPAND
                 RoleArn: !GetAtt CloudFormationRole.Arn
               InputArtifacts:
