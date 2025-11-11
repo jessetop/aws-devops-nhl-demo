@@ -28,22 +28,22 @@ A comprehensive DevOps demonstration featuring multiple microservices, CI/CD pip
 **Windows (PowerShell):**
 ```powershell
 # Clone and navigate to project
-git clone https://github.com/your-username/aws-devops-pipeline-demo
-cd aws-devops-pipeline-demo
+git clone https://github.com/jessetop/aws-devops-nhl-demo
+cd aws-devops-nhl-demo
 
 # Deploy using PowerShell script
-.\windows\windows-setup-infrastructure.ps1 -GitHubOrg "your-username" -GitHubToken "your-github-token"
+.\windows\windows-setup-infrastructure.ps1 -GitHubOrg "jessetop" -GitHubToken "your-github-token"
 ```
 
 **Linux/macOS (Bash):**
 ```bash
 # Clone and navigate to project
-git clone https://github.com/your-username/aws-devops-pipeline-demo
-cd aws-devops-pipeline-demo
+git clone https://github.com/jessetop/aws-devops-nhl-demo
+cd aws-devops-nhl-demo
 
 # Make scripts executable and deploy
 chmod +x linux/*.sh
-./linux/setup-infrastructure.sh your-username aws-devops-pipeline-demo your-github-token
+./linux/setup-infrastructure.sh jessetop aws-devops-nhl-demo your-github-token
 ```
 
 ### 2. Configure GitHub Secrets
@@ -163,12 +163,19 @@ aws codepipeline get-pipeline-state --name stats-processing-pipeline
 ## Cleanup
 
 ```bash
-# Delete CloudFormation stacks
+# Delete CloudFormation stacks (replace nhl-stats with your stack name)
 aws cloudformation delete-stack --stack-name nhl-stats-codepipeline
-aws cloudformation delete-stack --stack-name nhl-stats-eks
+aws cloudformation delete-stack --stack-name nhl-stats-oidc-role
+eksctl delete cluster --name nhl-stats-cluster
 aws cloudformation delete-stack --stack-name nhl-api-service
-aws cloudformation delete-stack --stack-name web-frontend-stack
+aws cloudformation delete-stack --stack-name nhl-stats-web-frontend-stack
 ```
+
+## Educational Demos
+
+See the `demos/` folder for additional learning examples:
+- **CloudFormation Helper Scripts** - cfn-init, cfn-signal, cfn-get-metadata, cfn-hup
+- **CDK vs CloudFormation** - Same functionality, different approaches
 
 ## Next Steps
 

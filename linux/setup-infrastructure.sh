@@ -3,7 +3,7 @@
 
 # Default values
 GITHUB_ORG="jessetop"
-GITHUB_REPO="aws-devops-pipeline-demo"
+GITHUB_REPO="aws-devops-nhl-demo"
 GITHUB_TOKEN=""
 GITHUB_BRANCH="main"
 USE_DEFAULT_VPC="false"

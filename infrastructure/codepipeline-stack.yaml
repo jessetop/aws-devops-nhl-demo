@@ -4,7 +4,7 @@ Description: 'CodePipeline infrastructure for NHL Stats Demo'
 Parameters:
   GitHubRepo:
     Type: String
-    Default: 'your-username/aws-devops-pipeline-demo'
+    Default: 'jessetop/aws-devops-nhl-demo'
   GitHubBranch:
     Type: String
     Default: 'main'

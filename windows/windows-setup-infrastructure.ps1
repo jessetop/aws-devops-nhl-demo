@@ -1,7 +1,7 @@
 # One-time infrastructure setup - Run locally with AWS CLI
 param(
-    [string]$GitHubOrg = "your-username",
-    [string]$GitHubRepo = "aws-devops-pipeline-demo",
+    [string]$GitHubOrg = "jessetop",
+    [string]$GitHubRepo = "aws-devops-nhl-demo",
     [string]$GitHubToken = "",
     [string]$GitHubBranch = "main",
     [switch]$UseDefaultVPC = $false,
