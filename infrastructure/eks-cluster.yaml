@@ -42,8 +42,3 @@ addons:
   - name: coredns
   - name: kube-proxy
   - name: aws-ebs-csi-driver
-
-# CloudWatch logging
-cloudWatch:
-  clusterLogging:
-    enable: ["audit", "authenticator", "controllerManager"]
