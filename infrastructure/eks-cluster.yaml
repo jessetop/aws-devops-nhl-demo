@@ -7,9 +7,7 @@ kind: ClusterConfig
 metadata:
   name: nhl-stats-cluster
   region: us-east-1
-
-# Kubernetes version (will use latest if not specified)
-# kubernetesVersion: "1.30"
+  # version: "1.30"
 
 # VPC configuration - eksctl will create VPC automatically
 vpc:

@@ -138,7 +138,7 @@ if ($ClusterExists -eq "$StackName-cluster") {
     Copy-Item $ConfigFile $TempConfig
     
     # Update cluster config with latest version and stack name
-    (Get-Content $TempConfig) -replace '^# kubernetesVersion:.*', "kubernetesVersion: `"$LatestEksVersion`"" | Set-Content $TempConfig
+    (Get-Content $TempConfig) -replace 'version: ".*"', "version: `"$LatestEksVersion`"" | Set-Content $TempConfig
     (Get-Content $TempConfig) -replace 'name: nhl-stats-cluster', "name: $StackName-cluster" | Set-Content $TempConfig
     (Get-Content $TempConfig) -replace 'name: nhl-stats-eks-nodes', "name: $StackName-eks-nodes" | Set-Content $TempConfig
     

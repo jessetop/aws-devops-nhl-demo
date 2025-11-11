@@ -171,7 +171,7 @@ else
     cp $CONFIG_FILE $TEMP_CONFIG
     
     # Update cluster config with latest version and stack name
-    sed "s/^# kubernetesVersion:.*/kubernetesVersion: \"$LATEST_EKS_VERSION\"/" $TEMP_CONFIG > $TEMP_CONFIG.tmp && mv $TEMP_CONFIG.tmp $TEMP_CONFIG
+    sed "s/version: \".*\"/version: \"$LATEST_EKS_VERSION\"/" $TEMP_CONFIG > $TEMP_CONFIG.tmp && mv $TEMP_CONFIG.tmp $TEMP_CONFIG
     sed "s/name: nhl-stats-cluster/name: ${STACK_NAME}-cluster/" $TEMP_CONFIG > $TEMP_CONFIG.tmp && mv $TEMP_CONFIG.tmp $TEMP_CONFIG
     sed "s/name: nhl-stats-eks-nodes/name: ${STACK_NAME}-eks-nodes/" $TEMP_CONFIG > $TEMP_CONFIG.tmp && mv $TEMP_CONFIG.tmp $TEMP_CONFIG
     

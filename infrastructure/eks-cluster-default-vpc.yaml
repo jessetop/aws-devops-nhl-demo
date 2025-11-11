@@ -7,9 +7,7 @@ kind: ClusterConfig
 metadata:
   name: eks-nhl-test-cluster
   region: us-east-1
-
-# Kubernetes version (will be updated dynamically)
-kubernetesVersion: "1.32"
+  version: "1.32"
 
 # Use default VPC - much faster for testing
 vpc:
