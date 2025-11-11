@@ -8,9 +8,10 @@ phases:
       - pip install aws-sam-cli
   build:
     commands:
+      - cd web-frontend
       - sam build
       - sam package --s3-bucket $ARTIFACTS_BUCKET --output-template-file packaged-template.yaml
 
 artifacts:
   files:
-    - packaged-template.yaml
+    - web-frontend/packaged-template.yaml
