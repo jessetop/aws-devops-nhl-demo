@@ -87,7 +87,12 @@ Resources:
             pre_build:
               commands:
                 - echo Updating kubeconfig...
-                - aws eks update-kubeconfig --region $AWS_DEFAULT_REGION --name $CLUSTER_NAME
+                - echo "Cluster: $CLUSTER_NAME in region: $AWS_DEFAULT_REGION"
+                - aws sts get-caller-identity
+                - aws eks describe-cluster --region $AWS_DEFAULT_REGION --name $CLUSTER_NAME
+                - aws eks update-kubeconfig --region $AWS_DEFAULT_REGION --name $CLUSTER_NAME --verbose
+                - kubectl config view
+                - kubectl auth can-i get pods --v=5
             build:
               commands:
                 - echo Deploying to EKS...
@@ -250,6 +255,13 @@ Resources:
                   - logs:*
                   - eks:DescribeCluster
                   - eks:ListClusters
+                  - eks:DescribeNodegroup
+                  - eks:ListNodegroups
+                  - eks:AccessKubernetesApi
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - sts:GetCallerIdentity
                 Resource: '*'
 
   CodePipelineRole:
@@ -274,6 +286,25 @@ Resources:
                   - cloudformation:*
                   - iam:PassRole
                 Resource: '*'
+
+  # EKS Access Entry for CodeBuild Role
+  CodeBuildEKSAccessEntry:
+    Type: AWS::EKS::AccessEntry
+    Properties:
+      ClusterName: !Sub '${StackName}-cluster'
+      PrincipalArn: !GetAtt CodeBuildRole.Arn
+      Type: STANDARD
+
+  # EKS Access Policy Association for CodeBuild Role
+  CodeBuildEKSAccessPolicy:
+    Type: AWS::EKS::AccessPolicyAssociation
+    Properties:
+      ClusterName: !Sub '${StackName}-cluster'
+      PrincipalArn: !GetAtt CodeBuildRole.Arn
+      PolicyArn: arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy
+      AccessScope:
+        Type: cluster
+    DependsOn: CodeBuildEKSAccessEntry
 
   CloudFormationRole:
     Type: AWS::IAM::Role
