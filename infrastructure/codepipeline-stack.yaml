@@ -11,13 +11,17 @@ Parameters:
   GitHubToken:
     Type: String
     NoEcho: true
+  StackName:
+    Type: String
+    Default: 'nhl-stats'
+    Description: 'Stack name prefix for unique resource naming'
 
 Resources:
   # S3 Bucket for artifacts
   ArtifactsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub '${AWS::StackName}-artifacts-${AWS::AccountId}'
+      BucketName: !Sub '${StackName}-artifacts-${AWS::AccountId}'
       VersioningConfiguration:
         Status: Enabled
 
@@ -25,13 +29,13 @@ Resources:
   StatsProcessingECR:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: stats-processing
+      RepositoryName: !Sub '${StackName}-stats-processing'
 
   # CodeBuild Project for Stats Processing
   StatsProcessingBuild:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: stats-processing-build
+      Name: !Sub '${StackName}-stats-processing-build'
       ServiceRole: !GetAtt CodeBuildRole.Arn
       Artifacts:
         Type: CODEPIPELINE
@@ -53,7 +57,7 @@ Resources:
   WebFrontendBuild:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: web-frontend-build
+      Name: !Sub '${StackName}-web-frontend-build'
       ServiceRole: !GetAtt CodeBuildRole.Arn
       Artifacts:
         Type: CODEPIPELINE
@@ -72,7 +76,7 @@ Resources:
   StatsProcessingPipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
-      Name: stats-processing-pipeline
+      Name: !Sub '${StackName}-stats-processing-pipeline'
       RoleArn: !GetAtt CodePipelineRole.Arn
       ArtifactStore:
         Type: S3
@@ -112,7 +116,7 @@ Resources:
   WebFrontendPipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
-      Name: web-frontend-pipeline
+      Name: !Sub '${StackName}-web-frontend-pipeline'
       RoleArn: !GetAtt CodePipelineRole.Arn
       ArtifactStore:
         Type: S3
@@ -157,7 +161,7 @@ Resources:
                 Version: 1
               Configuration:
                 ActionMode: CREATE_UPDATE
-                StackName: web-frontend-stack
+                StackName: !Sub '${StackName}-web-frontend-stack'
                 TemplatePath: BuildOutput::packaged-template.yaml
                 Capabilities: CAPABILITY_IAM
                 RoleArn: !GetAtt CloudFormationRole.Arn

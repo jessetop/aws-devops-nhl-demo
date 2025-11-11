@@ -116,7 +116,7 @@ echo "Creating CodePipeline infrastructure..."
 aws cloudformation deploy \
     --template-file infrastructure/codepipeline-stack.yaml \
     --stack-name ${STACK_NAME}-codepipeline \
-    --parameter-overrides GitHubRepo="$GITHUB_ORG/$GITHUB_REPO" GitHubToken=$GITHUB_TOKEN GitHubBranch=$GITHUB_BRANCH \
+    --parameter-overrides GitHubRepo="$GITHUB_ORG/$GITHUB_REPO" GitHubToken=$GITHUB_TOKEN GitHubBranch=$GITHUB_BRANCH StackName=$STACK_NAME \
     --capabilities CAPABILITY_IAM
 
 echo "✅ CodePipeline infrastructure created successfully"
