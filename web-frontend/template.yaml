@@ -1,6 +1,16 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
+Parameters:
+  NHLApiEndpoint:
+    Type: String
+    Default: 'https://YOUR_NHL_API_GATEWAY_URL/prod/nhl-stats'
+    Description: NHL API Gateway endpoint
+  StatsProcessingEndpoint:
+    Type: String
+    Default: 'http://YOUR_EKS_LOADBALANCER_URL/process-stats'
+    Description: EKS Stats Processing service endpoint
+
 Resources:
   WebFrontendFunction:
     Type: AWS::Serverless::Function
@@ -9,6 +19,10 @@ Resources:
       Handler: app.lambda_handler
       Runtime: python3.9
       Timeout: 30
+      Environment:
+        Variables:
+          NHL_API_ENDPOINT: !Ref NHLApiEndpoint
+          STATS_PROCESSING_ENDPOINT: !Ref StatsProcessingEndpoint
       Events:
         Api:
           Type: Api

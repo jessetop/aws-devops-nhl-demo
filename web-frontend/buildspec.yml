@@ -39,12 +39,11 @@ phases:
           echo "⚠️  EKS LoadBalancer not ready, using placeholder"
         fi
         
-        # Replace placeholders in app.py
-        echo "📝 Updating endpoints in app.py..."
-        sed -i "s|https://YOUR_NHL_API_GATEWAY_URL/prod/nhl-stats|$NHL_API_URL|g" app.py
-        sed -i "s|http://YOUR_EKS_LOADBALANCER_URL/process-stats|$EKS_URL|g" app.py
-        
-        echo "✅ Endpoints updated successfully"
+        # Store endpoints for SAM deployment
+        echo "📝 Storing endpoints for deployment..."
+        echo "NHL_API_URL=$NHL_API_URL" >> ../deployment.env
+        echo "EKS_URL=$EKS_URL" >> ../deployment.env
+        echo "✅ Endpoints stored successfully"
       - |
         # Check and cleanup failed CloudFormation stack
         STACK_NAME="eks-nhl-test-web-frontend-stack"
@@ -59,7 +58,19 @@ phases:
         elif [[ "$STACK_STATUS" != "NOT_EXISTS" ]]; then
           echo "✅ Stack $STACK_NAME status: $STACK_STATUS"
         fi
+      - |
+        # Load discovered endpoints
+        if [ -f ../deployment.env ]; then
+          source ../deployment.env
+        fi
       - sam build
+      - |
+        sam deploy --no-confirm-changeset --no-fail-on-empty-changeset \
+          --stack-name eks-nhl-test-web-frontend-stack \
+          --capabilities CAPABILITY_IAM \
+          --parameter-overrides \
+            NHLApiEndpoint="${NHL_API_URL:-https://YOUR_NHL_API_GATEWAY_URL/prod/nhl-stats}" \
+            StatsProcessingEndpoint="${EKS_URL:-http://YOUR_EKS_LOADBALANCER_URL/process-stats}"
       - sam package --s3-bucket $ARTIFACTS_BUCKET --output-template-file packaged-template.yaml
 
 artifacts:

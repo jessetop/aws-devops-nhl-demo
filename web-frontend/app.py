@@ -3,8 +3,12 @@ import urllib3
 import os
 
 def lambda_handler(event, context):
+    # Get service endpoints from environment variables
+    nhl_api_endpoint = os.environ.get('NHL_API_ENDPOINT', 'https://YOUR_NHL_API_GATEWAY_URL/prod/nhl-stats')
+    stats_processing_endpoint = os.environ.get('STATS_PROCESSING_ENDPOINT', 'http://YOUR_EKS_LOADBALANCER_URL/process-stats')
+    
     # Simple HTML page that displays NHL stats
-    html_content = """
+    html_content = f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -48,9 +52,9 @@ def lambda_handler(event, context):
         </div>
         
         <script>
-            // API endpoints - these will be dynamically populated
-            const NHL_API_ENDPOINT = 'https://YOUR_NHL_API_GATEWAY_URL/prod/nhl-stats';
-            const STATS_PROCESSING_ENDPOINT = 'http://YOUR_EKS_LOADBALANCER_URL/process-stats';
+            // API endpoints from Lambda environment variables
+            const NHL_API_ENDPOINT = '{nhl_api_endpoint}';
+            const STATS_PROCESSING_ENDPOINT = '{stats_processing_endpoint}';
             
             async function loadNHLStats() {
                 document.getElementById('nhl-stats').innerHTML = '<div class="loading">Loading NHL stats from Lambda...</div>';
