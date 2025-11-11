@@ -143,17 +143,35 @@ ROLE_STACK_STATUS=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME
 if [[ "$ROLE_STACK_STATUS" =~ FAILED|ROLLBACK ]]; then
     echo "Cleaning up failed stack: ${STACK_NAME}-oidc-role"
     aws cloudformation delete-stack --stack-name ${STACK_NAME}-oidc-role
-    aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}-oidc-role
+    echo "Waiting for stack deletion (this may take a few minutes)..."
+    if ! aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}-oidc-role; then
+        echo "⚠️  Stack deletion failed or timed out. You may need to manually delete resources."
+        echo "🔍 Check the stack events: aws cloudformation describe-stack-events --stack-name ${STACK_NAME}-oidc-role"
+        echo "💡 Try deleting the stack manually in the AWS Console if needed."
+    fi
 fi
 
 echo "Creating GitHub OIDC role..."
-aws cloudformation deploy \
+if aws cloudformation deploy \
     --template-file infrastructure/github-oidc-role.yaml \
     --stack-name ${STACK_NAME}-oidc-role \
     --parameter-overrides GitHubOrg=$GITHUB_ORG GitHubRepo=$GITHUB_REPO StackName=$STACK_NAME \
-    --capabilities CAPABILITY_NAMED_IAM
+    --capabilities CAPABILITY_NAMED_IAM; then
+    echo "✅ GitHub OIDC role created successfully"
+else
+    echo "❌ FAILED to create GitHub OIDC role!"
+    echo "🔍 Run this command to see the error details:"
+    echo "aws cloudformation describe-stack-events --stack-name ${STACK_NAME}-oidc-role"
+    exit 1
+fi
 
-echo "✅ GitHub OIDC role created successfully"
+# 3. Check if S3 artifacts bucket already exists
+BUCKET_NAME="${STACK_NAME}-artifacts-${AWS_ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text)}"
+echo "Checking if S3 bucket exists: $BUCKET_NAME"
+if aws s3api head-bucket --bucket "$BUCKET_NAME" 2>/dev/null; then
+    echo "⚠️  S3 bucket $BUCKET_NAME already exists - this may cause deployment issues"
+    echo "💡 Consider using a different StackName or manually delete the bucket if it's safe to do so"
+fi
 
 # 3. Create CodePipeline infrastructure
 echo "Checking CodePipeline stack..."
@@ -161,17 +179,27 @@ PIPELINE_STACK_STATUS=$(aws cloudformation describe-stacks --stack-name ${STACK_
 if [[ "$PIPELINE_STACK_STATUS" =~ FAILED|ROLLBACK ]]; then
     echo "Cleaning up failed stack: ${STACK_NAME}-codepipeline"
     aws cloudformation delete-stack --stack-name ${STACK_NAME}-codepipeline
-    aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}-codepipeline
+    echo "Waiting for stack deletion (this may take a few minutes)..."
+    if ! aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}-codepipeline; then
+        echo "⚠️  Stack deletion failed or timed out. You may need to manually delete resources."
+        echo "🔍 Check the stack events: aws cloudformation describe-stack-events --stack-name ${STACK_NAME}-codepipeline"
+        echo "💡 Try deleting the stack manually in the AWS Console if needed."
+    fi
 fi
 
 echo "Creating CodePipeline infrastructure..."
-aws cloudformation deploy \
+if aws cloudformation deploy \
     --template-file infrastructure/codepipeline-stack.yaml \
     --stack-name ${STACK_NAME}-codepipeline \
     --parameter-overrides GitHubRepo="$GITHUB_ORG/$GITHUB_REPO" GitHubToken=$GITHUB_TOKEN GitHubBranch=$GITHUB_BRANCH StackName=$STACK_NAME \
-    --capabilities CAPABILITY_IAM
-
-echo "✅ CodePipeline infrastructure created successfully"
+    --capabilities CAPABILITY_IAM; then
+    echo "✅ CodePipeline infrastructure created successfully"
+else
+    echo "❌ FAILED to create CodePipeline infrastructure!"
+    echo "🔍 Run this command to see the error details:"
+    echo "aws cloudformation describe-stack-events --stack-name ${STACK_NAME}-codepipeline"
+    exit 1
+fi
 
 # 4. Create EKS cluster using eksctl
 echo "Checking EKS CloudFormation stacks..."

@@ -91,7 +91,13 @@ $RoleStackStatus = aws cloudformation describe-stacks --stack-name $StackName-oi
 if ($RoleStackStatus -match "FAILED|ROLLBACK") {
     Write-Host "Cleaning up failed stack: $StackName-oidc-role" -ForegroundColor Red
     aws cloudformation delete-stack --stack-name $StackName-oidc-role
+    Write-Host "Waiting for stack deletion (this may take a few minutes)..." -ForegroundColor Yellow
     aws cloudformation wait stack-delete-complete --stack-name $StackName-oidc-role
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "⚠️  Stack deletion failed or timed out. You may need to manually delete resources." -ForegroundColor Yellow
+        Write-Host "🔍 Check the stack events: aws cloudformation describe-stack-events --stack-name $StackName-oidc-role" -ForegroundColor White
+        Write-Host "💡 Try deleting the stack manually in the AWS Console if needed." -ForegroundColor Cyan
+    }
 }
 
 Write-Host "Creating GitHub OIDC role..." -ForegroundColor Yellow
@@ -102,10 +108,26 @@ aws cloudformation deploy `
     --capabilities CAPABILITY_NAMED_IAM
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "❌ GitHub OIDC role deployment failed. Aborting."
+    Write-Host "❌ FAILED to create GitHub OIDC role!" -ForegroundColor Red -BackgroundColor Black
+    Write-Host "🔍 Run this command to see the error details:" -ForegroundColor Yellow
+    Write-Host "aws cloudformation describe-stack-events --stack-name $StackName-oidc-role" -ForegroundColor White
     exit 1
 }
 Write-Host "✅ GitHub OIDC role created successfully" -ForegroundColor Green
+
+# 3. Check if S3 artifacts bucket already exists
+$AccountId = aws sts get-caller-identity --query Account --output text
+$BucketName = "$StackName-artifacts-$AccountId"
+Write-Host "Checking if S3 bucket exists: $BucketName" -ForegroundColor Yellow
+try {
+    aws s3api head-bucket --bucket $BucketName 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "⚠️  S3 bucket $BucketName already exists - this may cause deployment issues" -ForegroundColor Yellow
+        Write-Host "💡 Consider using a different StackName or manually delete the bucket if it's safe to do so" -ForegroundColor Cyan
+    }
+} catch {
+    # Bucket doesn't exist, which is fine
+}
 
 # 3. Create CodePipeline infrastructure
 Write-Host "Checking CodePipeline stack..." -ForegroundColor Yellow
@@ -113,7 +135,13 @@ $PipelineStackStatus = aws cloudformation describe-stacks --stack-name $StackNam
 if ($PipelineStackStatus -match "FAILED|ROLLBACK") {
     Write-Host "Cleaning up failed stack: $StackName-codepipeline" -ForegroundColor Red
     aws cloudformation delete-stack --stack-name $StackName-codepipeline
+    Write-Host "Waiting for stack deletion (this may take a few minutes)..." -ForegroundColor Yellow
     aws cloudformation wait stack-delete-complete --stack-name $StackName-codepipeline
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "⚠️  Stack deletion failed or timed out. You may need to manually delete resources." -ForegroundColor Yellow
+        Write-Host "🔍 Check the stack events: aws cloudformation describe-stack-events --stack-name $StackName-codepipeline" -ForegroundColor White
+        Write-Host "💡 Try deleting the stack manually in the AWS Console if needed." -ForegroundColor Cyan
+    }
 }
 
 Write-Host "Creating CodePipeline infrastructure..." -ForegroundColor Yellow
@@ -124,7 +152,9 @@ aws cloudformation deploy `
     --capabilities CAPABILITY_IAM
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "❌ CodePipeline infrastructure deployment failed. Aborting."
+    Write-Host "❌ FAILED to create CodePipeline infrastructure!" -ForegroundColor Red -BackgroundColor Black
+    Write-Host "🔍 Run this command to see the error details:" -ForegroundColor Yellow
+    Write-Host "aws cloudformation describe-stack-events --stack-name $StackName-codepipeline" -ForegroundColor White
     exit 1
 }
 Write-Host "✅ CodePipeline infrastructure created successfully" -ForegroundColor Green

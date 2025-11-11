@@ -20,6 +20,7 @@ Resources:
   # S3 Bucket for artifacts
   ArtifactsBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
     Properties:
       BucketName: !Sub '${StackName}-artifacts-${AWS::AccountId}'
       VersioningConfiguration:
