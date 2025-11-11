@@ -22,6 +22,7 @@ phases:
       - docker push $REPOSITORY_URI:latest
       - docker push $REPOSITORY_URI:$IMAGE_TAG
       - echo Writing image definitions file...
+      - cd ..
       - printf '[{"name":"stats-processing","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
       - sed -i "s|ACCOUNT_ID|$AWS_ACCOUNT_ID|g" stats-processing-service/k8s-deployment.yaml
       - sed -i "s|REGION|$AWS_DEFAULT_REGION|g" stats-processing-service/k8s-deployment.yaml
