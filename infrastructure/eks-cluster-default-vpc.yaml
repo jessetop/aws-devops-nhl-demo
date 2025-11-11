@@ -5,11 +5,11 @@ apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
 
 metadata:
-  name: nhl-stats-cluster
+  name: eks-nhl-test-cluster
   region: us-east-1
 
 # Kubernetes version (will be updated dynamically)
-# kubernetesVersion: "1.30"
+kubernetesVersion: "1.28"
 
 # Use default VPC - much faster for testing
 vpc:
@@ -22,7 +22,7 @@ vpc:
 
 # Node groups
 nodeGroups:
-  - name: nhl-stats-eks-nodes
+  - name: eks-nhl-test-eks-nodes
     instanceType: t3.medium
     desiredCapacity: 2
     minSize: 1
