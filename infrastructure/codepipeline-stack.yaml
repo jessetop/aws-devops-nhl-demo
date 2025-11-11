@@ -7,7 +7,7 @@ Parameters:
     Default: 'jessetop/aws-devops-nhl-demo'
   GitHubBranch:
     Type: String
-    Default: 'main'
+    Default: 'trunk'
   GitHubToken:
     Type: String
     NoEcho: true

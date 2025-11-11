@@ -3,7 +3,7 @@ param(
     [string]$GitHubOrg = "jessetop",
     [string]$GitHubRepo = "aws-devops-nhl-demo",
     [string]$GitHubToken = "",
-    [string]$GitHubBranch = "main",
+    [string]$GitHubBranch = "trunk",
     [switch]$UseDefaultVPC = $false,
     [string]$StackName = "nhl-stats"
 )

@@ -5,7 +5,7 @@
 GITHUB_ORG="jessetop"
 GITHUB_REPO="aws-devops-nhl-demo"
 GITHUB_TOKEN=""
-GITHUB_BRANCH="main"
+GITHUB_BRANCH="trunk"
 USE_DEFAULT_VPC="false"
 STACK_NAME="nhl-stats"
 REGION="us-east-1"
