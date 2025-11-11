@@ -145,7 +145,7 @@ Resources:
               Configuration:
                 ProjectName: !Ref StatsProcessingDeploy
               InputArtifacts:
-                - Name: BuildOutput
+                - Name: SourceOutput
 
   # CodePipeline for Web Frontend
   WebFrontendPipeline:
