@@ -83,7 +83,7 @@ Resources:
         Type: CODEPIPELINE
       Environment:
         Type: LINUX_CONTAINER
-        ComputeType: BUILD_GENERAL1_SMALL
+        ComputeType: BUILD_GENERAL1_MEDIUM
         Image: aws/codebuild/amazonlinux-2023-x86_64-standard:1.0
         EnvironmentVariables:
           - Name: AWS_DEFAULT_REGION
@@ -108,7 +108,7 @@ Resources:
         Type: CODEPIPELINE
       Environment:
         Type: LINUX_CONTAINER
-        ComputeType: BUILD_GENERAL1_SMALL
+        ComputeType: BUILD_GENERAL1_MEDIUM
         Image: aws/codebuild/standard:5.0
         EnvironmentVariables:
           - Name: ARTIFACTS_BUCKET
