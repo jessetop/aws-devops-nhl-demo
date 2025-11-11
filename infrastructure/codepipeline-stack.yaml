@@ -162,7 +162,7 @@ Resources:
               Configuration:
                 ActionMode: CREATE_UPDATE
                 StackName: !Sub '${StackName}-web-frontend-stack'
-                TemplatePath: BuildOutput::packaged-template.yaml
+                TemplatePath: BuildOutput::web-frontend/packaged-template.yaml
                 Capabilities: CAPABILITY_IAM
                 RoleArn: !GetAtt CloudFormationRole.Arn
               InputArtifacts:
