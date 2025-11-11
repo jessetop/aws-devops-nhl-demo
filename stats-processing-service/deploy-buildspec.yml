@@ -10,20 +10,14 @@ phases:
       - mv ./kubectl /usr/local/bin
   pre_build:
     commands:
-      - echo Updating kubeconfig...
-      - echo "Cluster: $CLUSTER_NAME in region: $AWS_DEFAULT_REGION"
-      - CODEBUILD_ROLE_ARN=$(aws sts get-caller-identity --query Arn --output text | sed 's/:assumed-role\//:role\//g' | sed 's/\/.*$//')
-      - echo "CodeBuild Role ARN: $CODEBUILD_ROLE_ARN"
-      - aws eks describe-access-entry --cluster-name $CLUSTER_NAME --principal-arn $CODEBUILD_ROLE_ARN || echo "Access entry not found"
-      - aws eks create-access-entry --cluster-name $CLUSTER_NAME --principal-arn $CODEBUILD_ROLE_ARN --type STANDARD || echo "Access entry already exists or failed to create"
-      - aws eks associate-access-policy --cluster-name $CLUSTER_NAME --principal-arn $CODEBUILD_ROLE_ARN --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy --access-scope type=cluster || echo "Policy association failed or already exists"
+      - echo "Updating kubeconfig for cluster $CLUSTER_NAME in region $AWS_DEFAULT_REGION"
       - aws eks update-kubeconfig --region $AWS_DEFAULT_REGION --name $CLUSTER_NAME
   build:
     commands:
-      - echo Deploying to EKS...
+      - echo "Deploying to EKS..."
       - kubectl apply -f stats-processing-service/k8s-deployment.yaml
       - kubectl rollout status deployment/stats-processing
   post_build:
     commands:
-      - echo Deployment completed
+      - echo "Deployment completed"
       - kubectl get services stats-processing-service
