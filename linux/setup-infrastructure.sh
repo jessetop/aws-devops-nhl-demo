@@ -50,11 +50,16 @@ aws cloudformation deploy \
 
 echo "✅ CodePipeline infrastructure created successfully"
 
-# 3. Create EKS cluster
+# 3. Get latest EKS version and create cluster
+echo "Getting latest EKS version..."
+LATEST_EKS_VERSION=$(aws eks describe-addon-versions --query 'addons[0].addonVersions[0].compatibilities[0].clusterVersion' --output text)
+echo "Using EKS version: $LATEST_EKS_VERSION"
+
 echo "Creating EKS cluster..."
 aws cloudformation deploy \
     --template-file infrastructure/eks-cluster.yaml \
     --stack-name nhl-stats-eks \
+    --parameter-overrides EksVersion=$LATEST_EKS_VERSION \
     --capabilities CAPABILITY_IAM
 
 echo "✅ EKS cluster created successfully"

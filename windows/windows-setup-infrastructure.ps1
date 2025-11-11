@@ -54,11 +54,16 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "✅ CodePipeline infrastructure created successfully" -ForegroundColor Green
 
-# 3. Create EKS cluster
+# 3. Get latest EKS version and create cluster
+Write-Host "Getting latest EKS version..." -ForegroundColor Yellow
+$LatestEksVersion = aws eks describe-addon-versions --query 'addons[0].addonVersions[0].compatibilities[0].clusterVersion' --output text
+Write-Host "Using EKS version: $LatestEksVersion" -ForegroundColor Cyan
+
 Write-Host "Creating EKS cluster..." -ForegroundColor Yellow
 aws cloudformation deploy `
     --template-file infrastructure/eks-cluster.yaml `
     --stack-name nhl-stats-eks `
+    --parameter-overrides EksVersion=$LatestEksVersion `
     --capabilities CAPABILITY_IAM
 
 if ($LASTEXITCODE -ne 0) {

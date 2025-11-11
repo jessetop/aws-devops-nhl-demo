@@ -5,6 +5,10 @@ Parameters:
   ClusterName:
     Type: String
     Default: 'nhl-stats-cluster'
+  EksVersion:
+    Type: String
+    Default: '1.30'
+    Description: 'EKS Kubernetes version'
 
 Resources:
   # EKS Cluster
@@ -12,7 +16,7 @@ Resources:
     Type: AWS::EKS::Cluster
     Properties:
       Name: !Ref ClusterName
-      Version: '1.24'
+      Version: !Ref EksVersion
       RoleArn: !GetAtt EKSClusterRole.Arn
       ResourcesVpcConfig:
         SubnetIds:
