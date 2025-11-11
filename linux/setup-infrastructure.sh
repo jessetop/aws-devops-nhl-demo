@@ -98,7 +98,7 @@ echo "Creating GitHub OIDC role..."
 aws cloudformation deploy \
     --template-file infrastructure/github-oidc-role.yaml \
     --stack-name ${STACK_NAME}-oidc-role \
-    --parameter-overrides GitHubOrg=$GITHUB_ORG GitHubRepo=$GITHUB_REPO \
+    --parameter-overrides GitHubOrg=$GITHUB_ORG GitHubRepo=$GITHUB_REPO StackName=$STACK_NAME \
     --capabilities CAPABILITY_NAMED_IAM
 
 echo "✅ GitHub OIDC role created successfully"

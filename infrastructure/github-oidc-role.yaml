@@ -8,6 +8,10 @@ Parameters:
   GitHubRepo:
     Type: String
     Description: 'GitHub repository name'
+  StackName:
+    Type: String
+    Default: 'nhl-stats'
+    Description: 'Stack name prefix for unique resource naming'
 
 Resources:
   # Note: OIDC Provider created via CLI because AWS::IAM::OIDCIdentityProvider 
@@ -15,7 +19,7 @@ Resources:
   GitHubActionsRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: GitHubActionsRole
+      RoleName: !Sub '${StackName}-GitHubActionsRole'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:

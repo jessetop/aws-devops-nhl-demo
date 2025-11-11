@@ -31,18 +31,18 @@ if ([string]::IsNullOrEmpty($OidcExists)) {
 
 # 2. Create GitHub OIDC Role
 Write-Host "Checking GitHub OIDC role stack..." -ForegroundColor Yellow
-$RoleStackStatus = aws cloudformation describe-stacks --stack-name github-oidc-role --query 'Stacks[0].StackStatus' --output text 2>$null
+$RoleStackStatus = aws cloudformation describe-stacks --stack-name $StackName-oidc-role --query 'Stacks[0].StackStatus' --output text 2>$null
 if ($RoleStackStatus -match "FAILED|ROLLBACK") {
-    Write-Host "Cleaning up failed stack: github-oidc-role" -ForegroundColor Red
-    aws cloudformation delete-stack --stack-name github-oidc-role
-    aws cloudformation wait stack-delete-complete --stack-name github-oidc-role
+    Write-Host "Cleaning up failed stack: $StackName-oidc-role" -ForegroundColor Red
+    aws cloudformation delete-stack --stack-name $StackName-oidc-role
+    aws cloudformation wait stack-delete-complete --stack-name $StackName-oidc-role
 }
 
 Write-Host "Creating GitHub OIDC role..." -ForegroundColor Yellow
 aws cloudformation deploy `
     --template-file infrastructure/github-oidc-role.yaml `
-    --stack-name github-oidc-role `
-    --parameter-overrides GitHubOrg=$GitHubOrg GitHubRepo=$GitHubRepo `
+    --stack-name $StackName-oidc-role `
+    --parameter-overrides GitHubOrg=$GitHubOrg GitHubRepo=$GitHubRepo StackName=$StackName `
     --capabilities CAPABILITY_NAMED_IAM
 
 if ($LASTEXITCODE -ne 0) {
