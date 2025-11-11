@@ -104,13 +104,13 @@ Write-Host "Checking EKS CloudFormation stacks..." -ForegroundColor Yellow
 $EksStackStatus = aws cloudformation describe-stacks --stack-name eksctl-$StackName-cluster-cluster --query 'Stacks[0].StackStatus' --output text 2>$null
 if ($EksStackStatus -match "FAILED|ROLLBACK") {
     Write-Host "Cleaning up failed eksctl stack: eksctl-$StackName-cluster-cluster" -ForegroundColor Red
-    eksctl delete cluster --name $StackName-cluster --wait
+    eksctl delete cluster --name $StackName-cluster
 }
 
 $NodeStackStatus = aws cloudformation describe-stacks --stack-name eksctl-$StackName-cluster-nodegroup-$StackName-eks-nodes --query 'Stacks[0].StackStatus' --output text 2>$null
 if ($NodeStackStatus -match "FAILED|ROLLBACK") {
     Write-Host "Cleaning up failed nodegroup stack" -ForegroundColor Red
-    eksctl delete cluster --name $StackName-cluster --wait
+    eksctl delete cluster --name $StackName-cluster
 }
 
 Write-Host "Checking if EKS cluster exists..." -ForegroundColor Yellow
@@ -133,13 +133,17 @@ if ($ClusterExists -eq "$StackName-cluster") {
         $ConfigFile = "infrastructure/eks-cluster.yaml"
     }
     
+    # Create temp config file to avoid permission issues
+    $TempConfig = "$env:TEMP\eks-cluster-$StackName.yaml"
+    Copy-Item $ConfigFile $TempConfig
+    
     # Update cluster config with latest version and stack name
-    (Get-Content $ConfigFile) -replace '^# kubernetesVersion:.*', "kubernetesVersion: `"$LatestEksVersion`"" | Set-Content $ConfigFile
-    (Get-Content $ConfigFile) -replace 'name: nhl-stats-cluster', "name: $StackName-cluster" | Set-Content $ConfigFile
-    (Get-Content $ConfigFile) -replace 'name: nhl-stats-eks-nodes', "name: $StackName-eks-nodes" | Set-Content $ConfigFile
+    (Get-Content $TempConfig) -replace '^# kubernetesVersion:.*', "kubernetesVersion: `"$LatestEksVersion`"" | Set-Content $TempConfig
+    (Get-Content $TempConfig) -replace 'name: nhl-stats-cluster', "name: $StackName-cluster" | Set-Content $TempConfig
+    (Get-Content $TempConfig) -replace 'name: nhl-stats-eks-nodes', "name: $StackName-eks-nodes" | Set-Content $TempConfig
     
     Write-Host "Creating EKS cluster with eksctl..." -ForegroundColor Yellow
-    eksctl create cluster --config-file $ConfigFile --wait
+    eksctl create cluster --config-file $TempConfig
     
     if ($LASTEXITCODE -ne 0) {
         Write-Error "❌ EKS cluster creation failed. Aborting."

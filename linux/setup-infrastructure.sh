@@ -137,13 +137,13 @@ echo "Checking EKS CloudFormation stacks..."
 EKS_STACK_STATUS=$(aws cloudformation describe-stacks --stack-name eksctl-${STACK_NAME}-cluster-cluster --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_EXISTS")
 if [[ "$EKS_STACK_STATUS" =~ FAILED|ROLLBACK ]]; then
     echo "Cleaning up failed eksctl stack: eksctl-${STACK_NAME}-cluster-cluster"
-    eksctl delete cluster --name ${STACK_NAME}-cluster --wait
+    eksctl delete cluster --name ${STACK_NAME}-cluster
 fi
 
 NODE_STACK_STATUS=$(aws cloudformation describe-stacks --stack-name eksctl-${STACK_NAME}-cluster-nodegroup-${STACK_NAME}-eks-nodes --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_EXISTS")
 if [[ "$NODE_STACK_STATUS" =~ FAILED|ROLLBACK ]]; then
     echo "Cleaning up failed nodegroup stack"
-    eksctl delete cluster --name ${STACK_NAME}-cluster --wait
+    eksctl delete cluster --name ${STACK_NAME}-cluster
 fi
 
 echo "Checking if EKS cluster exists..."
@@ -166,13 +166,17 @@ else
         CONFIG_FILE="infrastructure/eks-cluster.yaml"
     fi
     
+    # Create temp config file to avoid permission issues
+    TEMP_CONFIG="/tmp/eks-cluster-${STACK_NAME}.yaml"
+    cp $CONFIG_FILE $TEMP_CONFIG
+    
     # Update cluster config with latest version and stack name
-    sed -i "s/^# kubernetesVersion:.*/kubernetesVersion: \"$LATEST_EKS_VERSION\"/" $CONFIG_FILE
-    sed -i "s/name: nhl-stats-cluster/name: ${STACK_NAME}-cluster/" $CONFIG_FILE
-    sed -i "s/name: nhl-stats-eks-nodes/name: ${STACK_NAME}-eks-nodes/" $CONFIG_FILE
+    sed "s/^# kubernetesVersion:.*/kubernetesVersion: \"$LATEST_EKS_VERSION\"/" $TEMP_CONFIG > $TEMP_CONFIG.tmp && mv $TEMP_CONFIG.tmp $TEMP_CONFIG
+    sed "s/name: nhl-stats-cluster/name: ${STACK_NAME}-cluster/" $TEMP_CONFIG > $TEMP_CONFIG.tmp && mv $TEMP_CONFIG.tmp $TEMP_CONFIG
+    sed "s/name: nhl-stats-eks-nodes/name: ${STACK_NAME}-eks-nodes/" $TEMP_CONFIG > $TEMP_CONFIG.tmp && mv $TEMP_CONFIG.tmp $TEMP_CONFIG
     
     echo "Creating EKS cluster with eksctl..."
-    eksctl create cluster --config-file $CONFIG_FILE --wait
+    eksctl create cluster --config-file $TEMP_CONFIG
     echo "✅ EKS cluster created successfully"
 fi
 
