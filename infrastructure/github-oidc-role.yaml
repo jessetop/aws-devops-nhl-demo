@@ -42,8 +42,13 @@ Resources:
               - Effect: Allow
                 Action:
                   - iam:CreateRole
+                  - iam:DeleteRole
                   - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
                   - iam:PassRole
+                  - iam:GetRole
+                  - iam:ListRolePolicies
+                  - iam:ListAttachedRolePolicies
                 Resource: '*'
 
 Outputs:
