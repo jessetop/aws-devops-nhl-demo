@@ -185,3 +185,4 @@ See the `demos/` folder for additional learning examples:
 - Add monitoring dashboards
 - Integrate with AWS X-Ray for tracing
 - Add database layer for stats storage
+- Implement least-privilege IAM policies for production security
