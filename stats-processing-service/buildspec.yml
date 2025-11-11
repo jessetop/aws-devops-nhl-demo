@@ -12,6 +12,7 @@ phases:
     commands:
       - echo Build started on `date`
       - echo Building the Docker image...
+      - cd stats-processing-service
       - docker build -t $REPOSITORY_URI:latest .
       - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
   post_build:
@@ -22,10 +23,10 @@ phases:
       - docker push $REPOSITORY_URI:$IMAGE_TAG
       - echo Writing image definitions file...
       - printf '[{"name":"stats-processing","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
-      - sed -i "s|ACCOUNT_ID|$AWS_ACCOUNT_ID|g" k8s-deployment.yaml
-      - sed -i "s|REGION|$AWS_DEFAULT_REGION|g" k8s-deployment.yaml
+      - sed -i "s|ACCOUNT_ID|$AWS_ACCOUNT_ID|g" stats-processing-service/k8s-deployment.yaml
+      - sed -i "s|REGION|$AWS_DEFAULT_REGION|g" stats-processing-service/k8s-deployment.yaml
 
 artifacts:
   files:
     - imagedefinitions.json
-    - k8s-deployment.yaml
+    - stats-processing-service/k8s-deployment.yaml
