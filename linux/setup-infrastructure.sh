@@ -192,18 +192,23 @@ if aws eks describe-cluster --name "$EKS_CLUSTER_NAME" 2>/dev/null >/dev/null; t
     RESOURCE_CONFLICTS=true
 fi
 
+# Set CloudFormation parameters based on existing resources
+CREATE_S3="true"
+CREATE_ECR="true"
+
+if aws s3api head-bucket --bucket "$BUCKET_NAME" 2>/dev/null; then
+    CREATE_S3="false"
+fi
+
+if aws ecr describe-repositories --repository-names "$ECR_REPO_NAME" 2>/dev/null >/dev/null; then
+    CREATE_ECR="false"
+fi
+
 if [ "$RESOURCE_CONFLICTS" = true ]; then
-    echo "💡 Options to resolve conflicts:"
-    echo "  1. Use a different StackName: -StackName \"${STACK_NAME}-v2\""
-    echo "  2. Manually delete existing resources if safe to do so"
-    echo "  3. Continue anyway (CloudFormation will try to use existing resources)"
-    echo ""
-    read -p "Continue with deployment? (y/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "Deployment cancelled."
-        exit 1
-    fi
+    echo "💡 Will skip creating existing resources and use them instead"
+    echo "S3 Bucket: $([ "$CREATE_S3" = "false" ] && echo "Using existing" || echo "Will create")"
+    echo "ECR Repository: $([ "$CREATE_ECR" = "false" ] && echo "Using existing" || echo "Will create")"
+    echo "EKS Cluster: $(aws eks describe-cluster --name "$EKS_CLUSTER_NAME" 2>/dev/null >/dev/null && echo "Using existing" || echo "Will create")"
 else
     echo "✅ No resource conflicts detected"
 fi
@@ -226,7 +231,7 @@ echo "Creating CodePipeline infrastructure..."
 if aws cloudformation deploy \
     --template-file infrastructure/codepipeline-stack.yaml \
     --stack-name ${STACK_NAME}-codepipeline \
-    --parameter-overrides GitHubRepo="$GITHUB_ORG/$GITHUB_REPO" GitHubToken=$GITHUB_TOKEN GitHubBranch=$GITHUB_BRANCH StackName=$STACK_NAME \
+    --parameter-overrides GitHubRepo="$GITHUB_ORG/$GITHUB_REPO" GitHubToken=$GITHUB_TOKEN GitHubBranch=$GITHUB_BRANCH StackName=$STACK_NAME CreateS3Bucket=$CREATE_S3 CreateECRRepository=$CREATE_ECR \
     --capabilities CAPABILITY_IAM; then
     echo "✅ CodePipeline infrastructure created successfully"
 else

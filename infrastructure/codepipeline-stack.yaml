@@ -15,11 +15,26 @@ Parameters:
     Type: String
     Default: 'nhl-stats'
     Description: 'Stack name prefix for unique resource naming'
+  CreateECRRepository:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: 'Whether to create ECR repository (set to false if it already exists)'
+  CreateS3Bucket:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: 'Whether to create S3 bucket (set to false if it already exists)'
+
+Conditions:
+  ShouldCreateECR: !Equals [!Ref CreateECRRepository, 'true']
+  ShouldCreateS3: !Equals [!Ref CreateS3Bucket, 'true']
 
 Resources:
   # S3 Bucket for artifacts
   ArtifactsBucket:
     Type: AWS::S3::Bucket
+    Condition: ShouldCreateS3
     DeletionPolicy: Retain
     Properties:
       BucketName: !Sub '${StackName}-artifacts-${AWS::AccountId}'
@@ -29,6 +44,7 @@ Resources:
   # ECR Repository for Stats Processing Service
   StatsProcessingECR:
     Type: AWS::ECR::Repository
+    Condition: ShouldCreateECR
     DeletionPolicy: Retain
     Properties:
       RepositoryName: !Sub '${StackName}-stats-processing'
@@ -96,7 +112,7 @@ Resources:
         Image: aws/codebuild/standard:5.0
         EnvironmentVariables:
           - Name: ARTIFACTS_BUCKET
-            Value: !Ref ArtifactsBucket
+            Value: !If [ShouldCreateS3, !Ref ArtifactsBucket, !Sub '${StackName}-artifacts-${AWS::AccountId}']
       Source:
         Type: CODEPIPELINE
         BuildSpec: web-frontend/buildspec.yml
@@ -109,7 +125,7 @@ Resources:
       RoleArn: !GetAtt CodePipelineRole.Arn
       ArtifactStore:
         Type: S3
-        Location: !Ref ArtifactsBucket
+        Location: !If [ShouldCreateS3, !Ref ArtifactsBucket, !Sub '${StackName}-artifacts-${AWS::AccountId}']
       Stages:
         - Name: Source
           Actions:
@@ -161,7 +177,7 @@ Resources:
       RoleArn: !GetAtt CodePipelineRole.Arn
       ArtifactStore:
         Type: S3
-        Location: !Ref ArtifactsBucket
+        Location: !If [ShouldCreateS3, !Ref ArtifactsBucket, !Sub '${StackName}-artifacts-${AWS::AccountId}']
       Stages:
         - Name: Source
           Actions:
@@ -282,8 +298,8 @@ Resources:
 Outputs:
   ArtifactsBucket:
     Description: S3 Bucket for pipeline artifacts
-    Value: !Ref ArtifactsBucket
+    Value: !If [ShouldCreateS3, !Ref ArtifactsBucket, !Sub '${StackName}-artifacts-${AWS::AccountId}']
   
   StatsProcessingECR:
     Description: ECR Repository for Stats Processing Service
-    Value: !GetAtt StatsProcessingECR.RepositoryUri
+    Value: !If [ShouldCreateECR, !GetAtt StatsProcessingECR.RepositoryUri, !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${StackName}-stats-processing']
