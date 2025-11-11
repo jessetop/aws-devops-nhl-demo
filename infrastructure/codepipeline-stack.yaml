@@ -70,6 +70,10 @@ Resources:
         EnvironmentVariables:
           - Name: AWS_DEFAULT_REGION
             Value: !Ref AWS::Region
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+          - Name: ECR_REPOSITORY_NAME
+            Value: !Sub '${StackName}-stats-processing'
           - Name: CLUSTER_NAME
             Value: !Sub '${StackName}-cluster'
       Source:

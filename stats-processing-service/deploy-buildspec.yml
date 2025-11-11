@@ -3,7 +3,7 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      python: 3.8
+      python: 3.11
     commands:
       - curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/kubectl
       - chmod +x ./kubectl
@@ -15,7 +15,13 @@ phases:
   build:
     commands:
       - echo "Deploying to EKS"
-      - kubectl apply -f stats-processing-service/k8s-deployment.yaml
+      - echo "Substituting ECR image details..."
+      - sed "s/ACCOUNT_ID/$AWS_ACCOUNT_ID/g" stats-processing-service/k8s-deployment.yaml > /tmp/k8s-deployment.yaml
+      - sed -i "s/REGION/$AWS_DEFAULT_REGION/g" /tmp/k8s-deployment.yaml
+      - sed -i "s/stats-processing/$ECR_REPOSITORY_NAME/g" /tmp/k8s-deployment.yaml
+      - echo "Final deployment file:"
+      - cat /tmp/k8s-deployment.yaml
+      - kubectl apply -f /tmp/k8s-deployment.yaml
       - kubectl rollout status deployment/stats-processing
   post_build:
     commands:
