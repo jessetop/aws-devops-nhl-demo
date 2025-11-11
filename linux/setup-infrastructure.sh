@@ -4,6 +4,7 @@
 GITHUB_ORG=${1:-"jessetop"}
 GITHUB_REPO=${2:-"aws-devops-pipeline-demo"}
 GITHUB_TOKEN=${3:-""}
+GITHUB_BRANCH=${4:-"main"}
 
 echo "🔧 Setting up infrastructure..."
 
@@ -61,7 +62,7 @@ echo "Creating CodePipeline infrastructure..."
 aws cloudformation deploy \
     --template-file infrastructure/codepipeline-stack.yaml \
     --stack-name nhl-stats-codepipeline \
-    --parameter-overrides GitHubRepo="$GITHUB_ORG/$GITHUB_REPO" GitHubToken=$GITHUB_TOKEN \
+    --parameter-overrides GitHubRepo="$GITHUB_ORG/$GITHUB_REPO" GitHubToken=$GITHUB_TOKEN GitHubBranch=$GITHUB_BRANCH \
     --capabilities CAPABILITY_IAM
 
 echo "✅ CodePipeline infrastructure created successfully"
@@ -75,9 +76,17 @@ if [[ "$EKS_STACK_STATUS" =~ FAILED|ROLLBACK ]]; then
     aws cloudformation wait stack-delete-complete --stack-name nhl-stats-eks
 fi
 
-echo "Getting latest EKS version..."
-LATEST_EKS_VERSION=$(aws eks describe-addon-versions --query 'addons[0].addonVersions[0].compatibilities[0].clusterVersion' --output text)
-echo "Using EKS version: $LATEST_EKS_VERSION"
+# Check if EKS cluster already exists to prevent unwanted upgrades
+EXISTING_EKS_VERSION=$(aws eks describe-cluster --name nhl-stats-cluster --query 'cluster.version' --output text 2>/dev/null || echo "NOT_EXISTS")
+
+if [ "$EXISTING_EKS_VERSION" != "NOT_EXISTS" ]; then
+    echo "EKS cluster exists with version: $EXISTING_EKS_VERSION (keeping existing version)"
+    LATEST_EKS_VERSION=$EXISTING_EKS_VERSION
+else
+    echo "Getting latest EKS version for new cluster..."
+    LATEST_EKS_VERSION=$(aws eks describe-addon-versions --addon-name vpc-cni --query 'addons[0].addonVersions[0].compatibilities[-1].clusterVersion' --output text)
+    echo "Using EKS version: $LATEST_EKS_VERSION"
+fi
 
 echo "Creating EKS cluster..."
 aws cloudformation deploy \

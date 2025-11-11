@@ -2,7 +2,8 @@
 param(
     [string]$GitHubOrg = "your-username",
     [string]$GitHubRepo = "aws-devops-pipeline-demo",
-    [string]$GitHubToken = ""
+    [string]$GitHubToken = "",
+    [string]$GitHubBranch = "main"
 )
 
 Write-Host "🔧 Setting up infrastructure..." -ForegroundColor Green
@@ -61,7 +62,7 @@ Write-Host "Creating CodePipeline infrastructure..." -ForegroundColor Yellow
 aws cloudformation deploy `
     --template-file infrastructure/codepipeline-stack.yaml `
     --stack-name nhl-stats-codepipeline `
-    --parameter-overrides GitHubRepo="$GitHubOrg/$GitHubRepo" GitHubToken=$GitHubToken `
+    --parameter-overrides GitHubRepo="$GitHubOrg/$GitHubRepo" GitHubToken=$GitHubToken GitHubBranch=$GitHubBranch `
     --capabilities CAPABILITY_IAM
 
 if ($LASTEXITCODE -ne 0) {
@@ -79,9 +80,17 @@ if ($EksStackStatus -match "FAILED|ROLLBACK") {
     aws cloudformation wait stack-delete-complete --stack-name nhl-stats-eks
 }
 
-Write-Host "Getting latest EKS version..." -ForegroundColor Yellow
-$LatestEksVersion = aws eks describe-addon-versions --query 'addons[0].addonVersions[0].compatibilities[0].clusterVersion' --output text
-Write-Host "Using EKS version: $LatestEksVersion" -ForegroundColor Cyan
+# Check if EKS cluster already exists to prevent unwanted upgrades
+$ExistingEksVersion = aws eks describe-cluster --name nhl-stats-cluster --query 'cluster.version' --output text 2>$null
+
+if ($ExistingEksVersion -and $LASTEXITCODE -eq 0) {
+    Write-Host "EKS cluster exists with version: $ExistingEksVersion (keeping existing version)" -ForegroundColor Cyan
+    $LatestEksVersion = $ExistingEksVersion
+} else {
+    Write-Host "Getting latest EKS version for new cluster..." -ForegroundColor Yellow
+    $LatestEksVersion = aws eks describe-addon-versions --addon-name vpc-cni --query 'addons[0].addonVersions[0].compatibilities[-1].clusterVersion' --output text
+    Write-Host "Using EKS version: $LatestEksVersion" -ForegroundColor Cyan
+}
 
 Write-Host "Creating EKS cluster..." -ForegroundColor Yellow
 aws cloudformation deploy `

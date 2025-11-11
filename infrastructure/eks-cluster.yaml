@@ -30,7 +30,7 @@ Resources:
     Type: AWS::EKS::Nodegroup
     Properties:
       ClusterName: !Ref EKSCluster
-      NodegroupName: stats-processing-nodes
+      NodegroupName: nhl-stats-eks-nodes
       NodeRole: !GetAtt EKSNodeRole.Arn
       InstanceTypes:
         - t3.medium
