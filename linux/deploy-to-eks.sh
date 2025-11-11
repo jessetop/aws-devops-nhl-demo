@@ -9,9 +9,14 @@ echo "🚀 Deploying to EKS..."
 # Enable strict error handling
 set -e
 
-# Update kubeconfig
+# Update kubeconfig (eksctl creates this automatically, but ensure it's current)
 echo "Updating kubeconfig..."
-aws eks update-kubeconfig --region $REGION --name $CLUSTER_NAME
+eksctl utils write-kubeconfig --cluster $CLUSTER_NAME --region $REGION
+
+if [ $? -ne 0 ]; then
+    echo "Trying alternative kubeconfig update..."
+    aws eks update-kubeconfig --region $REGION --name $CLUSTER_NAME
+fi
 
 # Get ECR repository URI
 echo "Getting ECR repository URI..."

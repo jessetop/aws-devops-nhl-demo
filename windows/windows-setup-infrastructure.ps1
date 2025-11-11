@@ -71,39 +71,43 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "✅ CodePipeline infrastructure created successfully" -ForegroundColor Green
 
-# 4. Get latest EKS version and create cluster
-Write-Host "Checking EKS stack..." -ForegroundColor Yellow
-$EksStackStatus = aws cloudformation describe-stacks --stack-name nhl-stats-eks --query 'Stacks[0].StackStatus' --output text 2>$null
+# 4. Create EKS cluster using eksctl
+Write-Host "Checking EKS CloudFormation stacks..." -ForegroundColor Yellow
+$EksStackStatus = aws cloudformation describe-stacks --stack-name eksctl-nhl-stats-cluster-cluster --query 'Stacks[0].StackStatus' --output text 2>$null
 if ($EksStackStatus -match "FAILED|ROLLBACK") {
-    Write-Host "Cleaning up failed stack: nhl-stats-eks" -ForegroundColor Red
-    aws cloudformation delete-stack --stack-name nhl-stats-eks
-    aws cloudformation wait stack-delete-complete --stack-name nhl-stats-eks
+    Write-Host "Cleaning up failed eksctl stack: eksctl-nhl-stats-cluster-cluster" -ForegroundColor Red
+    eksctl delete cluster --name nhl-stats-cluster --wait
 }
 
-# Check if EKS cluster already exists to prevent unwanted upgrades
-$ExistingEksVersion = aws eks describe-cluster --name nhl-stats-cluster --query 'cluster.version' --output text 2>$null
+$NodeStackStatus = aws cloudformation describe-stacks --stack-name eksctl-nhl-stats-cluster-nodegroup-nhl-stats-eks-nodes --query 'Stacks[0].StackStatus' --output text 2>$null
+if ($NodeStackStatus -match "FAILED|ROLLBACK") {
+    Write-Host "Cleaning up failed nodegroup stack" -ForegroundColor Red
+    eksctl delete cluster --name nhl-stats-cluster --wait
+}
 
-if ($ExistingEksVersion -and $LASTEXITCODE -eq 0) {
-    Write-Host "EKS cluster exists with version: $ExistingEksVersion (keeping existing version)" -ForegroundColor Cyan
-    $LatestEksVersion = $ExistingEksVersion
+Write-Host "Checking if EKS cluster exists..." -ForegroundColor Yellow
+$ClusterExists = aws eks describe-cluster --name nhl-stats-cluster --query 'cluster.name' --output text 2>$null
+
+if ($ClusterExists -eq "nhl-stats-cluster") {
+    Write-Host "✅ EKS cluster already exists" -ForegroundColor Green
 } else {
-    Write-Host "Getting latest EKS version for new cluster..." -ForegroundColor Yellow
+    # Get latest EKS version and update config
+    Write-Host "Getting latest EKS version..." -ForegroundColor Yellow
     $LatestEksVersion = aws eks describe-addon-versions --addon-name vpc-cni --query 'addons[0].addonVersions[0].compatibilities[-1].clusterVersion' --output text
     Write-Host "Using EKS version: $LatestEksVersion" -ForegroundColor Cyan
+    
+    # Update cluster config with latest version
+    (Get-Content infrastructure/eks-cluster.yaml) -replace '^# kubernetesVersion:.*', "kubernetesVersion: `"$LatestEksVersion`"" | Set-Content infrastructure/eks-cluster.yaml
+    
+    Write-Host "Creating EKS cluster with eksctl..." -ForegroundColor Yellow
+    eksctl create cluster --config-file infrastructure/eks-cluster.yaml --wait
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "❌ EKS cluster creation failed. Aborting."
+        exit 1
+    }
+    Write-Host "✅ EKS cluster created successfully" -ForegroundColor Green
 }
-
-Write-Host "Creating EKS cluster..." -ForegroundColor Yellow
-aws cloudformation deploy `
-    --template-file infrastructure/eks-cluster.yaml `
-    --stack-name nhl-stats-eks `
-    --parameter-overrides EksVersion=$LatestEksVersion `
-    --capabilities CAPABILITY_IAM
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "❌ EKS cluster deployment failed. Aborting."
-    exit 1
-}
-Write-Host "✅ EKS cluster created successfully" -ForegroundColor Green
 
 # Get the GitHub role ARN for secrets
 $RoleArn = aws cloudformation describe-stacks `

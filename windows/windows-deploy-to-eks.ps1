@@ -6,13 +6,17 @@ param(
 
 Write-Host "🚀 Deploying to EKS..." -ForegroundColor Green
 
-# Update kubeconfig
+# Update kubeconfig (eksctl creates this automatically, but ensure it's current)
 Write-Host "Updating kubeconfig..." -ForegroundColor Yellow
-aws eks update-kubeconfig --region $Region --name $ClusterName
+eksctl utils write-kubeconfig --cluster $ClusterName --region $Region
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "❌ Failed to update kubeconfig. Aborting."
-    exit 1
+    Write-Host "Trying alternative kubeconfig update..." -ForegroundColor Yellow
+    aws eks update-kubeconfig --region $Region --name $ClusterName
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "❌ Failed to update kubeconfig. Aborting."
+        exit 1
+    }
 }
 
 # Get ECR repository URI

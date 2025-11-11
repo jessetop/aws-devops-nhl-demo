@@ -67,35 +67,38 @@ aws cloudformation deploy \
 
 echo "✅ CodePipeline infrastructure created successfully"
 
-# 4. Get latest EKS version and create cluster
-echo "Checking EKS stack..."
-EKS_STACK_STATUS=$(aws cloudformation describe-stacks --stack-name nhl-stats-eks --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_EXISTS")
+# 4. Create EKS cluster using eksctl
+echo "Checking EKS CloudFormation stacks..."
+EKS_STACK_STATUS=$(aws cloudformation describe-stacks --stack-name eksctl-nhl-stats-cluster-cluster --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_EXISTS")
 if [[ "$EKS_STACK_STATUS" =~ FAILED|ROLLBACK ]]; then
-    echo "Cleaning up failed stack: nhl-stats-eks"
-    aws cloudformation delete-stack --stack-name nhl-stats-eks
-    aws cloudformation wait stack-delete-complete --stack-name nhl-stats-eks
+    echo "Cleaning up failed eksctl stack: eksctl-nhl-stats-cluster-cluster"
+    eksctl delete cluster --name nhl-stats-cluster --wait
 fi
 
-# Check if EKS cluster already exists to prevent unwanted upgrades
-EXISTING_EKS_VERSION=$(aws eks describe-cluster --name nhl-stats-cluster --query 'cluster.version' --output text 2>/dev/null || echo "NOT_EXISTS")
+NODE_STACK_STATUS=$(aws cloudformation describe-stacks --stack-name eksctl-nhl-stats-cluster-nodegroup-nhl-stats-eks-nodes --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_EXISTS")
+if [[ "$NODE_STACK_STATUS" =~ FAILED|ROLLBACK ]]; then
+    echo "Cleaning up failed nodegroup stack"
+    eksctl delete cluster --name nhl-stats-cluster --wait
+fi
 
-if [ "$EXISTING_EKS_VERSION" != "NOT_EXISTS" ]; then
-    echo "EKS cluster exists with version: $EXISTING_EKS_VERSION (keeping existing version)"
-    LATEST_EKS_VERSION=$EXISTING_EKS_VERSION
+echo "Checking if EKS cluster exists..."
+CLUSTER_EXISTS=$(aws eks describe-cluster --name nhl-stats-cluster --query 'cluster.name' --output text 2>/dev/null || echo "NOT_EXISTS")
+
+if [ "$CLUSTER_EXISTS" = "nhl-stats-cluster" ]; then
+    echo "✅ EKS cluster already exists"
 else
-    echo "Getting latest EKS version for new cluster..."
+    # Get latest EKS version and update config
+    echo "Getting latest EKS version..."
     LATEST_EKS_VERSION=$(aws eks describe-addon-versions --addon-name vpc-cni --query 'addons[0].addonVersions[0].compatibilities[-1].clusterVersion' --output text)
     echo "Using EKS version: $LATEST_EKS_VERSION"
+    
+    # Update cluster config with latest version
+    sed -i "s/^# kubernetesVersion:.*/kubernetesVersion: \"$LATEST_EKS_VERSION\"/" infrastructure/eks-cluster.yaml
+    
+    echo "Creating EKS cluster with eksctl..."
+    eksctl create cluster --config-file infrastructure/eks-cluster.yaml --wait
+    echo "✅ EKS cluster created successfully"
 fi
-
-echo "Creating EKS cluster..."
-aws cloudformation deploy \
-    --template-file infrastructure/eks-cluster.yaml \
-    --stack-name nhl-stats-eks \
-    --parameter-overrides EksVersion=$LATEST_EKS_VERSION \
-    --capabilities CAPABILITY_IAM
-
-echo "✅ EKS cluster created successfully"
 
 # Get the GitHub role ARN for secrets
 ROLE_ARN=$(aws cloudformation describe-stacks \
