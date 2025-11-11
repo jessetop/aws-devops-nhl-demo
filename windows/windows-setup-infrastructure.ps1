@@ -182,6 +182,47 @@ if ($ClusterExists -eq "$StackName-cluster") {
     Write-Host "✅ EKS cluster created successfully" -ForegroundColor Green
 }
 
+# 5. Configure EKS access for CodeBuild role
+Write-Host "Configuring EKS access for CodeBuild role..." -ForegroundColor Yellow
+
+# Get CodeBuild role ARN from CloudFormation
+$CodeBuildRoleArn = aws cloudformation describe-stacks --stack-name "$StackName-codepipeline" --query 'Stacks[0].Outputs[?OutputKey==`CodeBuildRoleArn`].OutputValue' --output text 2>$null
+
+if ([string]::IsNullOrEmpty($CodeBuildRoleArn)) {
+    Write-Host "Getting CodeBuild role ARN from IAM..." -ForegroundColor Yellow
+    $RoleName = aws iam list-roles --query "Roles[?contains(RoleName, '$StackName') && contains(RoleName, 'CodeBuildRole')].RoleName" --output text
+    if (-not [string]::IsNullOrEmpty($RoleName)) {
+        $RoleName = ($RoleName -split "`t")[0]  # Take first match
+        $CodeBuildRoleArn = aws iam get-role --role-name $RoleName --query 'Role.Arn' --output text
+    }
+}
+
+if (-not [string]::IsNullOrEmpty($CodeBuildRoleArn)) {
+    Write-Host "CodeBuild Role ARN: $CodeBuildRoleArn" -ForegroundColor Cyan
+    
+    # Create access entry
+    Write-Host "Creating EKS access entry..." -ForegroundColor Yellow
+    aws eks create-access-entry --cluster-name "$StackName-cluster" --principal-arn $CodeBuildRoleArn --type STANDARD 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Access entry created successfully" -ForegroundColor Green
+    } else {
+        Write-Host "Access entry already exists or failed to create" -ForegroundColor Yellow
+    }
+    
+    # Associate policy
+    Write-Host "Associating EKS policy..." -ForegroundColor Yellow
+    aws eks associate-access-policy --cluster-name "$StackName-cluster" --principal-arn $CodeBuildRoleArn --policy-arn "arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy" --access-scope type=cluster 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Policy associated successfully" -ForegroundColor Green
+    } else {
+        Write-Host "Policy already associated or failed to associate" -ForegroundColor Yellow
+    }
+    
+    Write-Host "✅ EKS access configured for CodeBuild role" -ForegroundColor Green
+} else {
+    Write-Host "⚠️  Could not find CodeBuild role ARN - you may need to run utils\configure-eks-access.ps1 manually" -ForegroundColor Yellow
+}
+
 # Get the GitHub role ARN for secrets
 $RoleArn = aws cloudformation describe-stacks `
     --stack-name $StackName-oidc-role `

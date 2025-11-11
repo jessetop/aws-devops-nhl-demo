@@ -230,6 +230,46 @@ else
     echo "✅ EKS cluster created successfully"
 fi
 
+# 5. Configure EKS access for CodeBuild role
+echo "Configuring EKS access for CodeBuild role..."
+
+# Get CodeBuild role ARN from CloudFormation
+CODEBUILD_ROLE_ARN=$(aws cloudformation describe-stacks \
+    --stack-name "${STACK_NAME}-codepipeline" \
+    --query 'Stacks[0].Outputs[?OutputKey==`CodeBuildRoleArn`].OutputValue' \
+    --output text 2>/dev/null)
+
+if [ -z "$CODEBUILD_ROLE_ARN" ]; then
+    echo "Getting CodeBuild role ARN from IAM..."
+    ROLE_NAME=$(aws iam list-roles --query "Roles[?contains(RoleName, '${STACK_NAME}') && contains(RoleName, 'CodeBuildRole')].RoleName" --output text | head -1)
+    if [ -n "$ROLE_NAME" ]; then
+        CODEBUILD_ROLE_ARN=$(aws iam get-role --role-name "$ROLE_NAME" --query 'Role.Arn' --output text)
+    fi
+fi
+
+if [ -n "$CODEBUILD_ROLE_ARN" ]; then
+    echo "CodeBuild Role ARN: $CODEBUILD_ROLE_ARN"
+    
+    # Create access entry
+    echo "Creating EKS access entry..."
+    aws eks create-access-entry \
+        --cluster-name "${STACK_NAME}-cluster" \
+        --principal-arn "$CODEBUILD_ROLE_ARN" \
+        --type STANDARD || echo "Access entry already exists"
+    
+    # Associate policy
+    echo "Associating EKS policy..."
+    aws eks associate-access-policy \
+        --cluster-name "${STACK_NAME}-cluster" \
+        --principal-arn "$CODEBUILD_ROLE_ARN" \
+        --policy-arn "arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy" \
+        --access-scope type=cluster || echo "Policy already associated"
+    
+    echo "✅ EKS access configured for CodeBuild role"
+else
+    echo "⚠️  Could not find CodeBuild role ARN - you may need to run utils/configure-eks-access.sh manually"
+fi
+
 # Get the GitHub role ARN for secrets
 ROLE_ARN=$(aws cloudformation describe-stacks \
     --stack-name ${STACK_NAME}-oidc-role \
