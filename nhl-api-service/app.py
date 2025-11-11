@@ -1,7 +1,10 @@
 import json
 import urllib3
-import boto3
 from datetime import datetime
+import logging
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
     http = urllib3.PoolManager()
@@ -10,9 +13,12 @@ def lambda_handler(event, context):
     teams_url = "https://statsapi.web.nhl.com/api/v1/teams"
     
     try:
+        logger.info(f"Fetching teams from: {teams_url}")
         # Get teams data
         teams_response = http.request('GET', teams_url)
+        logger.info(f"Teams response status: {teams_response.status}")
         teams_data = json.loads(teams_response.data.decode('utf-8'))
+        logger.info(f"Found {len(teams_data.get('teams', []))} teams")
         
         # Get current season stats for first few teams
         stats = []
@@ -42,7 +48,12 @@ def lambda_handler(event, context):
         }
         
     except Exception as e:
+        logger.error(f"Error in NHL API service: {str(e)}")
         return {
             'statusCode': 500,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
             'body': json.dumps({'error': str(e)})
         }

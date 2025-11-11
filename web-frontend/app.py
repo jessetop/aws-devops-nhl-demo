@@ -7,6 +7,25 @@ def lambda_handler(event, context):
     nhl_api_endpoint = os.environ.get('NHL_API_ENDPOINT', 'https://YOUR_NHL_API_GATEWAY_URL/prod/nhl-stats')
     stats_processing_endpoint = os.environ.get('STATS_PROCESSING_ENDPOINT', 'http://YOUR_EKS_LOADBALANCER_URL/process-stats')
     
+    # Get current AWS region
+    current_region = os.environ.get('AWS_REGION', 'unknown')
+    
+    # Extract regions from endpoints for comparison
+    nhl_api_region = 'unknown'
+    eks_region = 'unknown'
+    
+    if 'execute-api' in nhl_api_endpoint:
+        try:
+            nhl_api_region = nhl_api_endpoint.split('.')[2]
+        except:
+            pass
+    
+    if 'elb.amazonaws.com' in stats_processing_endpoint:
+        try:
+            eks_region = stats_processing_endpoint.split('.')[1]
+        except:
+            pass
+    
     # Simple HTML page that displays NHL stats
     html_content = f"""
     <!DOCTYPE html>
@@ -41,12 +60,14 @@ def lambda_handler(event, context):
             </div>
             
             <div class="service-box">
-                <h2>Service Status</h2>
+                <h2>Service Status & Configuration</h2>
                 <div id="service-status">
-                    <p>&#9989; Web Frontend: Active (Lambda + CodePipeline)</p>
-                    <p>&#128260; NHL API Service: <span id="nhl-api-status">Check endpoint</span></p>
-                    <p>&#128260; Stats Processing: <span id="stats-processing-status">Check endpoint</span></p>
-                    <p><small>Update API endpoints in code to connect to real services</small></p>
+                    <p>&#9989; Web Frontend: Active (Lambda + CodePipeline) - Region: {current_region}</p>
+                    <p>&#128260; NHL API Service: <span id="nhl-api-status">Check endpoint</span> - Region: {nhl_api_region}</p>
+                    <p>&#128260; Stats Processing: <span id="stats-processing-status">Check endpoint</span> - Region: {eks_region}</p>
+                    <div id="region-warning" style="color: orange; margin-top: 10px;"></div>
+                    <p><small>Endpoints: NHL API: {nhl_api_endpoint}</small></p>
+                    <p><small>EKS: {stats_processing_endpoint}</small></p>
                 </div>
             </div>
         </div>
@@ -55,6 +76,30 @@ def lambda_handler(event, context):
             // API endpoints from Lambda environment variables
             const NHL_API_ENDPOINT = '{nhl_api_endpoint}';
             const STATS_PROCESSING_ENDPOINT = '{stats_processing_endpoint}';
+            
+            // Region information
+            const CURRENT_REGION = '{current_region}';
+            const NHL_API_REGION = '{nhl_api_region}';
+            const EKS_REGION = '{eks_region}';
+            
+            // Check for region mismatches
+            function checkRegionMismatch() {{
+                const warnings = [];
+                if (NHL_API_REGION !== 'unknown' && NHL_API_REGION !== CURRENT_REGION) {{
+                    warnings.push(`NHL API in {nhl_api_region}, Web Frontend in {current_region}`);
+                }}
+                if (EKS_REGION !== 'unknown' && EKS_REGION !== CURRENT_REGION) {{
+                    warnings.push(`EKS in {eks_region}, Web Frontend in {current_region}`);
+                }}
+                if (warnings.length > 0) {{
+                    document.getElementById('region-warning').innerHTML = '⚠️ Region Mismatch: ' + warnings.join(', ');
+                }}
+            }}
+            
+            // Run region check on page load
+            window.onload = function() {{
+                checkRegionMismatch();
+            }};
             
             async function loadNHLStats() {
                 document.getElementById('nhl-stats').innerHTML = '<div class="loading">Loading NHL stats from Lambda...</div>';
@@ -77,9 +122,11 @@ def lambda_handler(event, context):
                     html += `<p><small>&#128640; Data from NHL API Lambda (GitHub Actions)</small></p>`;
                     
                     document.getElementById('nhl-stats').innerHTML = html;
+                    document.getElementById('nhl-api-status').innerHTML = '✅ Active';
                 } catch (error) {
                     console.error('NHL API Error:', error);
-                    document.getElementById('nhl-stats').innerHTML = `<div style="color: red;">Error loading NHL stats: ${error.message}<br><small>Check if NHL API Lambda is deployed</small></div>`;
+                    document.getElementById('nhl-stats').innerHTML = `<div style="color: red;">Error loading NHL stats: ${error.message}<br><small>Check if NHL API Lambda is deployed in ${NHL_API_REGION}</small></div>`;
+                    document.getElementById('nhl-api-status').innerHTML = '❌ Failed';
                 }
             }
             
@@ -103,9 +150,11 @@ def lambda_handler(event, context):
                     html += `<p><small>&#128640; Data from EKS Stats Processing (CodePipeline)</small></p>`;
                     
                     document.getElementById('processed-stats').innerHTML = html;
+                    document.getElementById('stats-processing-status').innerHTML = '✅ Active';
                 } catch (error) {
                     console.error('Stats Processing Error:', error);
-                    document.getElementById('processed-stats').innerHTML = `<div style="color: red;">Error loading processed stats: ${error.message}<br><small>Check if EKS service is deployed and accessible</small></div>`;
+                    document.getElementById('processed-stats').innerHTML = `<div style="color: red;">Error loading processed stats: ${error.message}<br><small>Check if EKS service is deployed in ${EKS_REGION}</small></div>`;
+                    document.getElementById('stats-processing-status').innerHTML = '❌ Failed';
                 }
             }
         </script>
