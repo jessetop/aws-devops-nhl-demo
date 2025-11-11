@@ -10,11 +10,7 @@ metadata:
   version: "1.32"
 
 # Use default VPC - much faster for testing
-vpc:
-  subnets:
-    public:
-      us-east-1a: { id: "auto" }
-      us-east-1b: { id: "auto" }
+# Remove vpc section entirely - eksctl will use default VPC automatically
 
 # Node groups
 nodeGroups:

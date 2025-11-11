@@ -146,6 +146,7 @@ Add these secrets to your GitHub repository:
 - **GitHub Actions failing**: Check AWS credentials in secrets
 - **EKS deployment issues**: Verify kubectl configuration
 - **Pipeline failures**: Check CodeBuild logs in CloudWatch
+- **EKS version mismatch**: Script detects latest AWS version but eksctl uses highest supported version (this is normal and safer)
 
 ### Useful Commands
 ```bash

@@ -6,7 +6,7 @@ kind: ClusterConfig
 
 metadata:
   name: nhl-stats-cluster
-  region: us-east-1
+  region: REGION_PLACEHOLDER
   # version: "1.30"
 
 # VPC configuration - eksctl will create VPC automatically

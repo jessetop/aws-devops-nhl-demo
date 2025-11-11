@@ -8,6 +8,7 @@ GITHUB_TOKEN=""
 GITHUB_BRANCH="main"
 USE_DEFAULT_VPC="false"
 STACK_NAME="nhl-stats"
+REGION="us-east-1"
 
 # Parse named parameters
 while [[ $# -gt 0 ]]; do
@@ -34,6 +35,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -StackName)
       STACK_NAME="$2"
+      shift 2
+      ;;
+    -Region)
+      REGION="$2"
       shift 2
       ;;
     *)
@@ -157,26 +162,35 @@ else
     LATEST_EKS_VERSION=$(aws eks describe-addon-versions --addon-name vpc-cni --query 'addons[0].addonVersions[0].compatibilities[0].clusterVersion' --output text)
     echo "Using EKS version: $LATEST_EKS_VERSION"
     
-    # Choose config file based on VPC preference
+    # Create cluster with or without default VPC
     if [ "$USE_DEFAULT_VPC" = "true" ]; then
         echo "Using default VPC for faster deployment"
-        CONFIG_FILE="infrastructure/eks-cluster-default-vpc.yaml"
+        eksctl create cluster \
+            --name ${STACK_NAME}-cluster \
+            --version $LATEST_EKS_VERSION \
+            --region $REGION \
+            --nodegroup-name ${STACK_NAME}-eks-nodes \
+            --node-type t3.medium \
+            --nodes 2 \
+            --nodes-min 1 \
+            --nodes-max 3 \
+            --vpc-from-kops-cluster false
     else
         echo "Creating new VPC with cluster"
         CONFIG_FILE="infrastructure/eks-cluster.yaml"
+        
+        # Create temp config file to avoid permission issues
+        TEMP_CONFIG="/tmp/eks-cluster-${STACK_NAME}.yaml"
+        cp $CONFIG_FILE $TEMP_CONFIG
+        
+        # Update cluster config with latest version, stack name, and region
+        sed "s/# version: \".*\"/version: \"$LATEST_EKS_VERSION\"/" $TEMP_CONFIG > $TEMP_CONFIG.tmp && mv $TEMP_CONFIG.tmp $TEMP_CONFIG
+        sed "s/name: nhl-stats-cluster/name: ${STACK_NAME}-cluster/" $TEMP_CONFIG > $TEMP_CONFIG.tmp && mv $TEMP_CONFIG.tmp $TEMP_CONFIG
+        sed "s/name: nhl-stats-eks-nodes/name: ${STACK_NAME}-eks-nodes/" $TEMP_CONFIG > $TEMP_CONFIG.tmp && mv $TEMP_CONFIG.tmp $TEMP_CONFIG
+        sed "s/region: REGION_PLACEHOLDER/region: $REGION/" $TEMP_CONFIG > $TEMP_CONFIG.tmp && mv $TEMP_CONFIG.tmp $TEMP_CONFIG
+        
+        eksctl create cluster --config-file $TEMP_CONFIG
     fi
-    
-    # Create temp config file to avoid permission issues
-    TEMP_CONFIG="/tmp/eks-cluster-${STACK_NAME}.yaml"
-    cp $CONFIG_FILE $TEMP_CONFIG
-    
-    # Update cluster config with latest version and stack name
-    sed "s/version: \".*\"/version: \"$LATEST_EKS_VERSION\"/" $TEMP_CONFIG > $TEMP_CONFIG.tmp && mv $TEMP_CONFIG.tmp $TEMP_CONFIG
-    sed "s/name: nhl-stats-cluster/name: ${STACK_NAME}-cluster/" $TEMP_CONFIG > $TEMP_CONFIG.tmp && mv $TEMP_CONFIG.tmp $TEMP_CONFIG
-    sed "s/name: nhl-stats-eks-nodes/name: ${STACK_NAME}-eks-nodes/" $TEMP_CONFIG > $TEMP_CONFIG.tmp && mv $TEMP_CONFIG.tmp $TEMP_CONFIG
-    
-    echo "Creating EKS cluster with eksctl..."
-    eksctl create cluster --config-file $TEMP_CONFIG
     echo "✅ EKS cluster created successfully"
 fi
 
