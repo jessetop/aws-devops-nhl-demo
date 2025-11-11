@@ -13,12 +13,10 @@ kubernetesVersion: "1.28"
 
 # Use default VPC - much faster for testing
 vpc:
-  id: "auto"  # eksctl will find and use default VPC
   subnets:
     public:
-      auto: true  # Use default public subnets
-    private:
-      auto: true  # Use default private subnets (if available)
+      us-east-1a: { id: "auto" }
+      us-east-1b: { id: "auto" }
 
 # Node groups
 nodeGroups:
