@@ -121,7 +121,7 @@ if ($ClusterExists -eq "$StackName-cluster") {
 } else {
     # Get latest EKS version and update config
     Write-Host "Getting latest EKS version..." -ForegroundColor Yellow
-    $LatestEksVersion = aws eks describe-addon-versions --addon-name vpc-cni --query 'addons[0].addonVersions[0].compatibilities[-1].clusterVersion' --output text
+    $LatestEksVersion = aws eks describe-addon-versions --addon-name vpc-cni --query 'addons[0].addonVersions[0].compatibilities[0].clusterVersion' --output text
     Write-Host "Using EKS version: $LatestEksVersion" -ForegroundColor Cyan
     
     # Choose config file based on VPC preference

@@ -154,7 +154,7 @@ if [ "$CLUSTER_EXISTS" = "${STACK_NAME}-cluster" ]; then
 else
     # Get latest EKS version and update config
     echo "Getting latest EKS version..."
-    LATEST_EKS_VERSION=$(aws eks describe-addon-versions --addon-name vpc-cni --query 'addons[0].addonVersions[0].compatibilities[-1].clusterVersion' --output text)
+    LATEST_EKS_VERSION=$(aws eks describe-addon-versions --addon-name vpc-cni --query 'addons[0].addonVersions[0].compatibilities[0].clusterVersion' --output text)
     echo "Using EKS version: $LATEST_EKS_VERSION"
     
     # Choose config file based on VPC preference
