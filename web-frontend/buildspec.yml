@@ -59,13 +59,14 @@ phases:
           echo "✅ Stack $STACK_NAME status: $STACK_STATUS"
         fi
       - sam build
+      - sam package --s3-bucket $ARTIFACTS_BUCKET --output-template-file packaged-template.yaml
       - |
         # Deploy with discovered endpoints as parameters
-        sam deploy --no-confirm-changeset --no-fail-on-empty-changeset \
+        sam deploy --template-file packaged-template.yaml \
+          --no-confirm-changeset --no-fail-on-empty-changeset \
           --stack-name eks-nhl-test-web-frontend-stack \
           --capabilities CAPABILITY_IAM \
           --parameter-overrides NHLApiEndpoint="${NHL_API_URL}" StatsProcessingEndpoint="${EKS_URL}"
-      - sam package --s3-bucket $ARTIFACTS_BUCKET --output-template-file packaged-template.yaml
 
 artifacts:
   files:
