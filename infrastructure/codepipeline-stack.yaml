@@ -49,6 +49,8 @@ Resources:
             Value: !Ref AWS::Region
           - Name: AWS_ACCOUNT_ID
             Value: !Ref AWS::AccountId
+          - Name: ECR_REPOSITORY_NAME
+            Value: !Sub '${StackName}-stats-processing'
       Source:
         Type: CODEPIPELINE
         BuildSpec: stats-processing-service/buildspec.yml
