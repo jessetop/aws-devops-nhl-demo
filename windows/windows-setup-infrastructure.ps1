@@ -8,6 +8,58 @@ param(
     [string]$StackName = "nhl-stats"
 )
 
+# Function to validate GitHub token
+function Test-GitHubToken {
+    param(
+        [string]$Token,
+        [string]$Repository
+    )
+    
+    if ([string]::IsNullOrEmpty($Token)) {
+        Write-Host "❌ Error: GitHub token is required but not provided" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "💡 If you set `$env:GITHUB_TOKEN as an environment variable, make sure it's still set:" -ForegroundColor Yellow
+        Write-Host "   `$env:GITHUB_TOKEN = 'your_token_here'" -ForegroundColor White
+        Write-Host "   Write-Host `$env:GITHUB_TOKEN  # Should show your token" -ForegroundColor White
+        Write-Host ""
+        Write-Host "Usage: .\windows-setup-infrastructure.ps1 -GitHubOrg 'myorg' -GitHubToken 'ghp_token' [-UseDefaultVPC]" -ForegroundColor White
+        Write-Host "Example: .\windows-setup-infrastructure.ps1 -GitHubOrg 'jessetop' -GitHubToken `$env:GITHUB_TOKEN -UseDefaultVPC" -ForegroundColor White
+        return $false
+    }
+    
+    Write-Host "🔍 Validating GitHub token access to $Repository..." -ForegroundColor Yellow
+    
+    try {
+        $headers = @{ Authorization = "token $Token" }
+        $response = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repository" -Headers $headers -ErrorAction Stop
+        Write-Host "✅ GitHub token is valid and has access to $Repository" -ForegroundColor Green
+        return $true
+    }
+    catch {
+        $statusCode = $_.Exception.Response.StatusCode.value__
+        switch ($statusCode) {
+            401 {
+                Write-Host "❌ GitHub token is invalid or expired" -ForegroundColor Red
+                Write-Host "💡 Generate a new token at: https://github.com/settings/tokens" -ForegroundColor Yellow
+                Write-Host "   Required scopes: repo, admin:repo_hook" -ForegroundColor White
+            }
+            404 {
+                Write-Host "❌ Repository $Repository not found or token lacks access" -ForegroundColor Red
+                Write-Host "💡 Check repository name and token permissions" -ForegroundColor Yellow
+            }
+            default {
+                Write-Host "❌ GitHub API error (HTTP $statusCode)" -ForegroundColor Red
+            }
+        }
+        return $false
+    }
+}
+
+# Validate GitHub token
+if (-not (Test-GitHubToken -Token $GitHubToken -Repository "$GitHubOrg/$GitHubRepo")) {
+    exit 1
+}
+
 Write-Host "🔧 Setting up infrastructure..." -ForegroundColor Green
 
 # Install required tools

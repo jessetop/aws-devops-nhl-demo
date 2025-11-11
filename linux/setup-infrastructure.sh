@@ -69,12 +69,50 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "🔧 Setting up infrastructure..."
+echo "Using GitHub token: ${GITHUB_TOKEN:0:8}..." # Show first 8 chars for verification
 
-if [ -z "$GITHUB_TOKEN" ]; then
-    echo "Error: GitHub token is required"
-    echo "Usage (named parameters): ./setup-infrastructure.sh -GitHubOrg \"myorg\" -GitHubToken \"ghp_token\" [-UseDefaultVPC]"
-    echo "Usage (positional): ./setup-infrastructure.sh myorg myrepo ghp_token [branch] [true]"
-    echo "Example: ./setup-infrastructure.sh -GitHubOrg \"jessetop\" -GitHubToken \"$GITHUB_TOKEN\" -UseDefaultVPC"
+# Function to validate GitHub token
+validate_github_token() {
+    local token="$1"
+    local repo="$2"
+    
+    if [ -z "$token" ]; then
+        echo "❌ Error: GitHub token is required but not provided"
+        echo ""
+        echo "💡 If you set GITHUB_TOKEN as an environment variable, make sure it's still set:"
+        echo "   export GITHUB_TOKEN=\"your_token_here\""
+        echo "   echo \$GITHUB_TOKEN  # Should show your token"
+        echo ""
+        echo "Usage (named parameters): ./setup-infrastructure.sh -GitHubOrg \"myorg\" -GitHubToken \"ghp_token\" [-UseDefaultVPC]"
+        echo "Usage (positional): ./setup-infrastructure.sh myorg myrepo ghp_token [branch] [true]"
+        echo "Example: ./setup-infrastructure.sh -GitHubOrg \"jessetop\" -GitHubToken \"$GITHUB_TOKEN\" -UseDefaultVPC"
+        return 1
+    fi
+    
+    echo "🔍 Validating GitHub token access to $repo..."
+    local response=$(curl -s -H "Authorization: token $token" "https://api.github.com/repos/$repo")
+    local http_code=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $token" "https://api.github.com/repos/$repo")
+    
+    if [ "$http_code" = "200" ]; then
+        echo "✅ GitHub token is valid and has access to $repo"
+        return 0
+    elif [ "$http_code" = "401" ]; then
+        echo "❌ GitHub token is invalid or expired"
+        echo "💡 Generate a new token at: https://github.com/settings/tokens"
+        echo "   Required scopes: repo, admin:repo_hook"
+        return 1
+    elif [ "$http_code" = "404" ]; then
+        echo "❌ Repository $repo not found or token lacks access"
+        echo "💡 Check repository name and token permissions"
+        return 1
+    else
+        echo "❌ GitHub API error (HTTP $http_code)"
+        return 1
+    fi
+}
+
+# Validate GitHub token
+if ! validate_github_token "$GITHUB_TOKEN" "$GITHUB_ORG/$GITHUB_REPO"; then
     exit 1
 fi
 

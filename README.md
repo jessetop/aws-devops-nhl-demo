@@ -47,9 +47,10 @@ chmod +x linux/*.sh
 ```
 
 ### 2. Configure GitHub Secrets
-Add these secrets to your GitHub repository:
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
+Add this secret to your GitHub repository:
+- `AWS_ROLE_ARN` - The OIDC role ARN (output from infrastructure deployment)
+
+**Note**: The setup script creates an OIDC role for secure GitHub Actions authentication. After deployment, copy the role ARN from the CloudFormation outputs and add it as a GitHub secret.
 
 ### 3. Configure EKS
 
@@ -143,7 +144,7 @@ Add these secrets to your GitHub repository:
 ## Troubleshooting
 
 ### Common Issues
-- **GitHub Actions failing**: Check AWS credentials in secrets
+- **GitHub Actions failing**: Check AWS_ROLE_ARN secret is set with correct OIDC role ARN
 - **EKS deployment issues**: Verify kubectl configuration
 - **Pipeline failures**: Check CodeBuild logs in CloudWatch
 - **EKS version mismatch**: Script detects latest AWS version but eksctl uses highest supported version (this is normal and safer)
