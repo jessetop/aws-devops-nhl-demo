@@ -30,8 +30,13 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     -UseDefaultVPC)
-      USE_DEFAULT_VPC="true"
-      shift
+      if [[ "$2" == "true" || "$2" == "false" ]]; then
+        USE_DEFAULT_VPC="$2"
+        shift 2
+      else
+        USE_DEFAULT_VPC="true"
+        shift
+      fi
       ;;
     -StackName)
       STACK_NAME="$2"
