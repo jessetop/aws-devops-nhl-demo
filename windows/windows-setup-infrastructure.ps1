@@ -3,7 +3,8 @@ param(
     [string]$GitHubOrg = "your-username",
     [string]$GitHubRepo = "aws-devops-pipeline-demo",
     [string]$GitHubToken = "",
-    [string]$GitHubBranch = "main"
+    [string]$GitHubBranch = "main",
+    [switch]$UseDefaultVPC = $false
 )
 
 Write-Host "🔧 Setting up infrastructure..." -ForegroundColor Green
@@ -96,11 +97,20 @@ if ($ClusterExists -eq "nhl-stats-cluster") {
     $LatestEksVersion = aws eks describe-addon-versions --addon-name vpc-cni --query 'addons[0].addonVersions[0].compatibilities[-1].clusterVersion' --output text
     Write-Host "Using EKS version: $LatestEksVersion" -ForegroundColor Cyan
     
+    # Choose config file based on VPC preference
+    if ($UseDefaultVPC) {
+        Write-Host "Using default VPC for faster deployment" -ForegroundColor Cyan
+        $ConfigFile = "infrastructure/eks-cluster-default-vpc.yaml"
+    } else {
+        Write-Host "Creating new VPC with cluster" -ForegroundColor Cyan
+        $ConfigFile = "infrastructure/eks-cluster.yaml"
+    }
+    
     # Update cluster config with latest version
-    (Get-Content infrastructure/eks-cluster.yaml) -replace '^# kubernetesVersion:.*', "kubernetesVersion: `"$LatestEksVersion`"" | Set-Content infrastructure/eks-cluster.yaml
+    (Get-Content $ConfigFile) -replace '^# kubernetesVersion:.*', "kubernetesVersion: `"$LatestEksVersion`"" | Set-Content $ConfigFile
     
     Write-Host "Creating EKS cluster with eksctl..." -ForegroundColor Yellow
-    eksctl create cluster --config-file infrastructure/eks-cluster.yaml --wait
+    eksctl create cluster --config-file $ConfigFile --wait
     
     if ($LASTEXITCODE -ne 0) {
         Write-Error "❌ EKS cluster creation failed. Aborting."

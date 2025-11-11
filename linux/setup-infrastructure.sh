@@ -1,16 +1,65 @@
 #!/bin/bash
 # One-time infrastructure setup - Run locally with AWS CLI
 
-GITHUB_ORG=${1:-"jessetop"}
-GITHUB_REPO=${2:-"aws-devops-pipeline-demo"}
-GITHUB_TOKEN=${3:-""}
-GITHUB_BRANCH=${4:-"main"}
+# Default values
+GITHUB_ORG="jessetop"
+GITHUB_REPO="aws-devops-pipeline-demo"
+GITHUB_TOKEN=""
+GITHUB_BRANCH="main"
+USE_DEFAULT_VPC="false"
+
+# Parse named parameters
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -GitHubOrg)
+      GITHUB_ORG="$2"
+      shift 2
+      ;;
+    -GitHubToken)
+      GITHUB_TOKEN="$2"
+      shift 2
+      ;;
+    -GitHubRepo)
+      GITHUB_REPO="$2"
+      shift 2
+      ;;
+    -GitHubBranch)
+      GITHUB_BRANCH="$2"
+      shift 2
+      ;;
+    -UseDefaultVPC)
+      USE_DEFAULT_VPC="true"
+      shift
+      ;;
+    *)
+      # Fallback to positional parameters for backward compatibility
+      if [ -z "${GITHUB_ORG_SET}" ]; then
+        GITHUB_ORG="$1"
+        GITHUB_ORG_SET=true
+      elif [ -z "${GITHUB_REPO_SET}" ]; then
+        GITHUB_REPO="$1"
+        GITHUB_REPO_SET=true
+      elif [ -z "${GITHUB_TOKEN_SET}" ]; then
+        GITHUB_TOKEN="$1"
+        GITHUB_TOKEN_SET=true
+      elif [ -z "${GITHUB_BRANCH_SET}" ]; then
+        GITHUB_BRANCH="$1"
+        GITHUB_BRANCH_SET=true
+      elif [ "$1" = "true" ]; then
+        USE_DEFAULT_VPC="true"
+      fi
+      shift
+      ;;
+  esac
+done
 
 echo "🔧 Setting up infrastructure..."
 
 if [ -z "$GITHUB_TOKEN" ]; then
     echo "Error: GitHub token is required"
-    echo "Usage: ./setup-infrastructure.sh <github-org> <github-repo> <github-token>"
+    echo "Usage (named parameters): ./setup-infrastructure.sh -GitHubOrg \"myorg\" -GitHubToken \"ghp_token\" [-UseDefaultVPC]"
+    echo "Usage (positional): ./setup-infrastructure.sh myorg myrepo ghp_token [branch] [true]"
+    echo "Example: ./setup-infrastructure.sh -GitHubOrg \"jessetop\" -GitHubToken \"$GITHUB_TOKEN\" -UseDefaultVPC"
     exit 1
 fi
 
@@ -92,11 +141,20 @@ else
     LATEST_EKS_VERSION=$(aws eks describe-addon-versions --addon-name vpc-cni --query 'addons[0].addonVersions[0].compatibilities[-1].clusterVersion' --output text)
     echo "Using EKS version: $LATEST_EKS_VERSION"
     
+    # Choose config file based on VPC preference
+    if [ "$USE_DEFAULT_VPC" = "true" ]; then
+        echo "Using default VPC for faster deployment"
+        CONFIG_FILE="infrastructure/eks-cluster-default-vpc.yaml"
+    else
+        echo "Creating new VPC with cluster"
+        CONFIG_FILE="infrastructure/eks-cluster.yaml"
+    fi
+    
     # Update cluster config with latest version
-    sed -i "s/^# kubernetesVersion:.*/kubernetesVersion: \"$LATEST_EKS_VERSION\"/" infrastructure/eks-cluster.yaml
+    sed -i "s/^# kubernetesVersion:.*/kubernetesVersion: \"$LATEST_EKS_VERSION\"/" $CONFIG_FILE
     
     echo "Creating EKS cluster with eksctl..."
-    eksctl create cluster --config-file infrastructure/eks-cluster.yaml --wait
+    eksctl create cluster --config-file $CONFIG_FILE --wait
     echo "✅ EKS cluster created successfully"
 fi
 
