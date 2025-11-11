@@ -165,12 +165,47 @@ else
     exit 1
 fi
 
-# 3. Check if S3 artifacts bucket already exists
-BUCKET_NAME="${STACK_NAME}-artifacts-${AWS_ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text)}"
-echo "Checking if S3 bucket exists: $BUCKET_NAME"
+# 3. Check for existing permanent resources
+ACCOUNT_ID=${AWS_ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text)}
+BUCKET_NAME="${STACK_NAME}-artifacts-${ACCOUNT_ID}"
+ECR_REPO_NAME="${STACK_NAME}-stats-processing"
+EKS_CLUSTER_NAME="${STACK_NAME}-cluster"
+
+echo "Checking for existing permanent resources..."
+RESOURCE_CONFLICTS=false
+
+# Check S3 bucket
 if aws s3api head-bucket --bucket "$BUCKET_NAME" 2>/dev/null; then
-    echo "⚠️  S3 bucket $BUCKET_NAME already exists - this may cause deployment issues"
-    echo "💡 Consider using a different StackName or manually delete the bucket if it's safe to do so"
+    echo "⚠️  S3 bucket $BUCKET_NAME already exists"
+    RESOURCE_CONFLICTS=true
+fi
+
+# Check ECR repository
+if aws ecr describe-repositories --repository-names "$ECR_REPO_NAME" 2>/dev/null >/dev/null; then
+    echo "⚠️  ECR repository $ECR_REPO_NAME already exists"
+    RESOURCE_CONFLICTS=true
+fi
+
+# Check EKS cluster
+if aws eks describe-cluster --name "$EKS_CLUSTER_NAME" 2>/dev/null >/dev/null; then
+    echo "⚠️  EKS cluster $EKS_CLUSTER_NAME already exists"
+    RESOURCE_CONFLICTS=true
+fi
+
+if [ "$RESOURCE_CONFLICTS" = true ]; then
+    echo "💡 Options to resolve conflicts:"
+    echo "  1. Use a different StackName: -StackName \"${STACK_NAME}-v2\""
+    echo "  2. Manually delete existing resources if safe to do so"
+    echo "  3. Continue anyway (CloudFormation will try to use existing resources)"
+    echo ""
+    read -p "Continue with deployment? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Deployment cancelled."
+        exit 1
+    fi
+else
+    echo "✅ No resource conflicts detected"
 fi
 
 # 3. Create CodePipeline infrastructure

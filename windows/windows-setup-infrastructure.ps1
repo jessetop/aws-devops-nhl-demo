@@ -115,18 +115,49 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "✅ GitHub OIDC role created successfully" -ForegroundColor Green
 
-# 3. Check if S3 artifacts bucket already exists
+# 3. Check for existing permanent resources
 $AccountId = aws sts get-caller-identity --query Account --output text
 $BucketName = "$StackName-artifacts-$AccountId"
-Write-Host "Checking if S3 bucket exists: $BucketName" -ForegroundColor Yellow
-try {
-    aws s3api head-bucket --bucket $BucketName 2>$null
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "⚠️  S3 bucket $BucketName already exists - this may cause deployment issues" -ForegroundColor Yellow
-        Write-Host "💡 Consider using a different StackName or manually delete the bucket if it's safe to do so" -ForegroundColor Cyan
+$EcrRepoName = "$StackName-stats-processing"
+$EksClusterName = "$StackName-cluster"
+
+Write-Host "Checking for existing permanent resources..." -ForegroundColor Yellow
+$ResourceConflicts = $false
+
+# Check S3 bucket
+aws s3api head-bucket --bucket $BucketName 2>$null
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "⚠️  S3 bucket $BucketName already exists" -ForegroundColor Yellow
+    $ResourceConflicts = $true
+}
+
+# Check ECR repository
+aws ecr describe-repositories --repository-names $EcrRepoName 2>$null | Out-Null
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "⚠️  ECR repository $EcrRepoName already exists" -ForegroundColor Yellow
+    $ResourceConflicts = $true
+}
+
+# Check EKS cluster
+aws eks describe-cluster --name $EksClusterName 2>$null | Out-Null
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "⚠️  EKS cluster $EksClusterName already exists" -ForegroundColor Yellow
+    $ResourceConflicts = $true
+}
+
+if ($ResourceConflicts) {
+    Write-Host "💡 Options to resolve conflicts:" -ForegroundColor Cyan
+    Write-Host "  1. Use a different StackName: -StackName '$StackName-v2'" -ForegroundColor White
+    Write-Host "  2. Manually delete existing resources if safe to do so" -ForegroundColor White
+    Write-Host "  3. Continue anyway (CloudFormation will try to use existing resources)" -ForegroundColor White
+    Write-Host ""
+    $Continue = Read-Host "Continue with deployment? (y/N)"
+    if ($Continue -notmatch "^[Yy]$") {
+        Write-Host "Deployment cancelled." -ForegroundColor Red
+        exit 1
     }
-} catch {
-    # Bucket doesn't exist, which is fine
+} else {
+    Write-Host "✅ No resource conflicts detected" -ForegroundColor Green
 }
 
 # 3. Create CodePipeline infrastructure

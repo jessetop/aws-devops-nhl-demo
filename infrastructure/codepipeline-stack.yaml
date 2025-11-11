@@ -29,6 +29,7 @@ Resources:
   # ECR Repository for Stats Processing Service
   StatsProcessingECR:
     Type: AWS::ECR::Repository
+    DeletionPolicy: Retain
     Properties:
       RepositoryName: !Sub '${StackName}-stats-processing'
 
