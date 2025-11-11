@@ -4,7 +4,8 @@ param(
     [string]$GitHubRepo = "aws-devops-pipeline-demo",
     [string]$GitHubToken = "",
     [string]$GitHubBranch = "main",
-    [switch]$UseDefaultVPC = $false
+    [switch]$UseDefaultVPC = $false,
+    [string]$StackName = "nhl-stats"
 )
 
 Write-Host "🔧 Setting up infrastructure..." -ForegroundColor Green

@@ -7,6 +7,7 @@ GITHUB_REPO="aws-devops-pipeline-demo"
 GITHUB_TOKEN=""
 GITHUB_BRANCH="main"
 USE_DEFAULT_VPC="false"
+STACK_NAME="nhl-stats"
 
 # Parse named parameters
 while [[ $# -gt 0 ]]; do
@@ -30,6 +31,10 @@ while [[ $# -gt 0 ]]; do
     -UseDefaultVPC)
       USE_DEFAULT_VPC="true"
       shift
+      ;;
+    -StackName)
+      STACK_NAME="$2"
+      shift 2
       ;;
     *)
       # Fallback to positional parameters for backward compatibility
@@ -82,17 +87,17 @@ fi
 
 # 2. Create GitHub OIDC Role
 echo "Checking GitHub OIDC role stack..."
-ROLE_STACK_STATUS=$(aws cloudformation describe-stacks --stack-name github-oidc-role --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_EXISTS")
+ROLE_STACK_STATUS=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME}-oidc-role --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_EXISTS")
 if [[ "$ROLE_STACK_STATUS" =~ FAILED|ROLLBACK ]]; then
-    echo "Cleaning up failed stack: github-oidc-role"
-    aws cloudformation delete-stack --stack-name github-oidc-role
-    aws cloudformation wait stack-delete-complete --stack-name github-oidc-role
+    echo "Cleaning up failed stack: ${STACK_NAME}-oidc-role"
+    aws cloudformation delete-stack --stack-name ${STACK_NAME}-oidc-role
+    aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}-oidc-role
 fi
 
 echo "Creating GitHub OIDC role..."
 aws cloudformation deploy \
     --template-file infrastructure/github-oidc-role.yaml \
-    --stack-name github-oidc-role \
+    --stack-name ${STACK_NAME}-oidc-role \
     --parameter-overrides GitHubOrg=$GITHUB_ORG GitHubRepo=$GITHUB_REPO \
     --capabilities CAPABILITY_NAMED_IAM
 
@@ -100,17 +105,17 @@ echo "✅ GitHub OIDC role created successfully"
 
 # 3. Create CodePipeline infrastructure
 echo "Checking CodePipeline stack..."
-PIPELINE_STACK_STATUS=$(aws cloudformation describe-stacks --stack-name nhl-stats-codepipeline --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_EXISTS")
+PIPELINE_STACK_STATUS=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME}-codepipeline --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_EXISTS")
 if [[ "$PIPELINE_STACK_STATUS" =~ FAILED|ROLLBACK ]]; then
-    echo "Cleaning up failed stack: nhl-stats-codepipeline"
-    aws cloudformation delete-stack --stack-name nhl-stats-codepipeline
-    aws cloudformation wait stack-delete-complete --stack-name nhl-stats-codepipeline
+    echo "Cleaning up failed stack: ${STACK_NAME}-codepipeline"
+    aws cloudformation delete-stack --stack-name ${STACK_NAME}-codepipeline
+    aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}-codepipeline
 fi
 
 echo "Creating CodePipeline infrastructure..."
 aws cloudformation deploy \
     --template-file infrastructure/codepipeline-stack.yaml \
-    --stack-name nhl-stats-codepipeline \
+    --stack-name ${STACK_NAME}-codepipeline \
     --parameter-overrides GitHubRepo="$GITHUB_ORG/$GITHUB_REPO" GitHubToken=$GITHUB_TOKEN GitHubBranch=$GITHUB_BRANCH \
     --capabilities CAPABILITY_IAM
 
@@ -118,22 +123,22 @@ echo "✅ CodePipeline infrastructure created successfully"
 
 # 4. Create EKS cluster using eksctl
 echo "Checking EKS CloudFormation stacks..."
-EKS_STACK_STATUS=$(aws cloudformation describe-stacks --stack-name eksctl-nhl-stats-cluster-cluster --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_EXISTS")
+EKS_STACK_STATUS=$(aws cloudformation describe-stacks --stack-name eksctl-${STACK_NAME}-cluster-cluster --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_EXISTS")
 if [[ "$EKS_STACK_STATUS" =~ FAILED|ROLLBACK ]]; then
-    echo "Cleaning up failed eksctl stack: eksctl-nhl-stats-cluster-cluster"
-    eksctl delete cluster --name nhl-stats-cluster --wait
+    echo "Cleaning up failed eksctl stack: eksctl-${STACK_NAME}-cluster-cluster"
+    eksctl delete cluster --name ${STACK_NAME}-cluster --wait
 fi
 
-NODE_STACK_STATUS=$(aws cloudformation describe-stacks --stack-name eksctl-nhl-stats-cluster-nodegroup-nhl-stats-eks-nodes --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_EXISTS")
+NODE_STACK_STATUS=$(aws cloudformation describe-stacks --stack-name eksctl-${STACK_NAME}-cluster-nodegroup-${STACK_NAME}-eks-nodes --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_EXISTS")
 if [[ "$NODE_STACK_STATUS" =~ FAILED|ROLLBACK ]]; then
     echo "Cleaning up failed nodegroup stack"
-    eksctl delete cluster --name nhl-stats-cluster --wait
+    eksctl delete cluster --name ${STACK_NAME}-cluster --wait
 fi
 
 echo "Checking if EKS cluster exists..."
-CLUSTER_EXISTS=$(aws eks describe-cluster --name nhl-stats-cluster --query 'cluster.name' --output text 2>/dev/null || echo "NOT_EXISTS")
+CLUSTER_EXISTS=$(aws eks describe-cluster --name ${STACK_NAME}-cluster --query 'cluster.name' --output text 2>/dev/null || echo "NOT_EXISTS")
 
-if [ "$CLUSTER_EXISTS" = "nhl-stats-cluster" ]; then
+if [ "$CLUSTER_EXISTS" = "${STACK_NAME}-cluster" ]; then
     echo "✅ EKS cluster already exists"
 else
     # Get latest EKS version and update config
@@ -150,8 +155,10 @@ else
         CONFIG_FILE="infrastructure/eks-cluster.yaml"
     fi
     
-    # Update cluster config with latest version
+    # Update cluster config with latest version and stack name
     sed -i "s/^# kubernetesVersion:.*/kubernetesVersion: \"$LATEST_EKS_VERSION\"/" $CONFIG_FILE
+    sed -i "s/name: nhl-stats-cluster/name: ${STACK_NAME}-cluster/" $CONFIG_FILE
+    sed -i "s/name: nhl-stats-eks-nodes/name: ${STACK_NAME}-eks-nodes/" $CONFIG_FILE
     
     echo "Creating EKS cluster with eksctl..."
     eksctl create cluster --config-file $CONFIG_FILE --wait
@@ -160,7 +167,7 @@ fi
 
 # Get the GitHub role ARN for secrets
 ROLE_ARN=$(aws cloudformation describe-stacks \
-    --stack-name github-oidc-role \
+    --stack-name ${STACK_NAME}-oidc-role \
     --query 'Stacks[0].Outputs[?OutputKey==`RoleArn`].OutputValue' \
     --output text)
 
