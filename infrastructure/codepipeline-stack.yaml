@@ -91,7 +91,6 @@ Resources:
                 - CODEBUILD_ROLE_ARN=$(aws sts get-caller-identity --query Arn --output text | sed 's/:assumed-role\//:role\//g' | sed 's/\/.*$//')
                 - echo "CodeBuild Role ARN: $CODEBUILD_ROLE_ARN"
                 - |
-                  # Create access entry if it doesn't exist
                   if ! aws eks describe-access-entry --cluster-name $CLUSTER_NAME --principal-arn $CODEBUILD_ROLE_ARN 2>/dev/null; then
                     echo "Creating EKS access entry..."
                     aws eks create-access-entry --cluster-name $CLUSTER_NAME --principal-arn $CODEBUILD_ROLE_ARN --type STANDARD || true
