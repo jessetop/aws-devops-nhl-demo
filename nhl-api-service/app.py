@@ -3,10 +3,18 @@ import urllib3
 from datetime import datetime
 import logging
 
+# Configure logging for better debugging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
+    # Read version from file
+    try:
+        with open('version.txt', 'r') as f:
+            version = f.read().strip()
+    except:
+        version = 'unknown'
+    
     http = urllib3.PoolManager()
     
     # NHL API endpoints
@@ -43,6 +51,7 @@ def lambda_handler(event, context):
             },
             'body': json.dumps({
                 'timestamp': datetime.now().isoformat(),
+                'version': version,
                 'teams': stats
             })
         }

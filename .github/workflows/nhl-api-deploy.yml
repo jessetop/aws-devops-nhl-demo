@@ -14,6 +14,20 @@ jobs:
       contents: read
     steps:
     - uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Auto-increment version
+      run: |
+        cd nhl-api-service
+        CURRENT_VERSION=$(cat version.txt)
+        NEW_VERSION=$((CURRENT_VERSION + 1))
+        echo $NEW_VERSION > version.txt
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add version.txt
+        git commit -m "Auto-increment version to $NEW_VERSION [skip ci]" || exit 0
+        git push || exit 0
     
     - name: Setup Python
       uses: actions/setup-python@v4
