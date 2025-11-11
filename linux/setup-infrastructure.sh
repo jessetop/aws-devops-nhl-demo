@@ -31,6 +31,14 @@ else
 fi
 
 # 2. Create GitHub OIDC Role
+echo "Checking GitHub OIDC role stack..."
+ROLE_STACK_STATUS=$(aws cloudformation describe-stacks --stack-name github-oidc-role --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_EXISTS")
+if [[ "$ROLE_STACK_STATUS" =~ FAILED|ROLLBACK ]]; then
+    echo "Cleaning up failed stack: github-oidc-role"
+    aws cloudformation delete-stack --stack-name github-oidc-role
+    aws cloudformation wait stack-delete-complete --stack-name github-oidc-role
+fi
+
 echo "Creating GitHub OIDC role..."
 aws cloudformation deploy \
     --template-file infrastructure/github-oidc-role.yaml \
@@ -40,7 +48,15 @@ aws cloudformation deploy \
 
 echo "✅ GitHub OIDC role created successfully"
 
-# 2. Create CodePipeline infrastructure
+# 3. Create CodePipeline infrastructure
+echo "Checking CodePipeline stack..."
+PIPELINE_STACK_STATUS=$(aws cloudformation describe-stacks --stack-name nhl-stats-codepipeline --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_EXISTS")
+if [[ "$PIPELINE_STACK_STATUS" =~ FAILED|ROLLBACK ]]; then
+    echo "Cleaning up failed stack: nhl-stats-codepipeline"
+    aws cloudformation delete-stack --stack-name nhl-stats-codepipeline
+    aws cloudformation wait stack-delete-complete --stack-name nhl-stats-codepipeline
+fi
+
 echo "Creating CodePipeline infrastructure..."
 aws cloudformation deploy \
     --template-file infrastructure/codepipeline-stack.yaml \
@@ -50,7 +66,15 @@ aws cloudformation deploy \
 
 echo "✅ CodePipeline infrastructure created successfully"
 
-# 3. Get latest EKS version and create cluster
+# 4. Get latest EKS version and create cluster
+echo "Checking EKS stack..."
+EKS_STACK_STATUS=$(aws cloudformation describe-stacks --stack-name nhl-stats-eks --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_EXISTS")
+if [[ "$EKS_STACK_STATUS" =~ FAILED|ROLLBACK ]]; then
+    echo "Cleaning up failed stack: nhl-stats-eks"
+    aws cloudformation delete-stack --stack-name nhl-stats-eks
+    aws cloudformation wait stack-delete-complete --stack-name nhl-stats-eks
+fi
+
 echo "Getting latest EKS version..."
 LATEST_EKS_VERSION=$(aws eks describe-addon-versions --query 'addons[0].addonVersions[0].compatibilities[0].clusterVersion' --output text)
 echo "Using EKS version: $LATEST_EKS_VERSION"

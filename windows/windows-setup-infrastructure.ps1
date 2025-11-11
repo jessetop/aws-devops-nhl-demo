@@ -27,6 +27,14 @@ if ([string]::IsNullOrEmpty($OidcExists)) {
 }
 
 # 2. Create GitHub OIDC Role
+Write-Host "Checking GitHub OIDC role stack..." -ForegroundColor Yellow
+$RoleStackStatus = aws cloudformation describe-stacks --stack-name github-oidc-role --query 'Stacks[0].StackStatus' --output text 2>$null
+if ($RoleStackStatus -match "FAILED|ROLLBACK") {
+    Write-Host "Cleaning up failed stack: github-oidc-role" -ForegroundColor Red
+    aws cloudformation delete-stack --stack-name github-oidc-role
+    aws cloudformation wait stack-delete-complete --stack-name github-oidc-role
+}
+
 Write-Host "Creating GitHub OIDC role..." -ForegroundColor Yellow
 aws cloudformation deploy `
     --template-file infrastructure/github-oidc-role.yaml `
@@ -40,7 +48,15 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "✅ GitHub OIDC role created successfully" -ForegroundColor Green
 
-# 2. Create CodePipeline infrastructure
+# 3. Create CodePipeline infrastructure
+Write-Host "Checking CodePipeline stack..." -ForegroundColor Yellow
+$PipelineStackStatus = aws cloudformation describe-stacks --stack-name nhl-stats-codepipeline --query 'Stacks[0].StackStatus' --output text 2>$null
+if ($PipelineStackStatus -match "FAILED|ROLLBACK") {
+    Write-Host "Cleaning up failed stack: nhl-stats-codepipeline" -ForegroundColor Red
+    aws cloudformation delete-stack --stack-name nhl-stats-codepipeline
+    aws cloudformation wait stack-delete-complete --stack-name nhl-stats-codepipeline
+}
+
 Write-Host "Creating CodePipeline infrastructure..." -ForegroundColor Yellow
 aws cloudformation deploy `
     --template-file infrastructure/codepipeline-stack.yaml `
@@ -54,7 +70,15 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "✅ CodePipeline infrastructure created successfully" -ForegroundColor Green
 
-# 3. Get latest EKS version and create cluster
+# 4. Get latest EKS version and create cluster
+Write-Host "Checking EKS stack..." -ForegroundColor Yellow
+$EksStackStatus = aws cloudformation describe-stacks --stack-name nhl-stats-eks --query 'Stacks[0].StackStatus' --output text 2>$null
+if ($EksStackStatus -match "FAILED|ROLLBACK") {
+    Write-Host "Cleaning up failed stack: nhl-stats-eks" -ForegroundColor Red
+    aws cloudformation delete-stack --stack-name nhl-stats-eks
+    aws cloudformation wait stack-delete-complete --stack-name nhl-stats-eks
+}
+
 Write-Host "Getting latest EKS version..." -ForegroundColor Yellow
 $LatestEksVersion = aws eks describe-addon-versions --query 'addons[0].addonVersions[0].compatibilities[0].clusterVersion' --output text
 Write-Host "Using EKS version: $LatestEksVersion" -ForegroundColor Cyan
