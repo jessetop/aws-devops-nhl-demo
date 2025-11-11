@@ -2,7 +2,7 @@ name: Deploy NHL API Service
 
 on:
   push:
-    branches: [ trunk ]
+    branches: [ main ]
     paths: [ 'nhl-api-service/**' ]
   workflow_dispatch:
 
