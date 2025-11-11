@@ -9,6 +9,20 @@ phases:
   build:
     commands:
       - cd web-frontend
+      - |
+        # Check and cleanup failed CloudFormation stack
+        STACK_NAME="eks-nhl-test-web-frontend-stack"
+        STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_EXISTS")
+        
+        if [[ "$STACK_STATUS" =~ ROLLBACK_FAILED|UPDATE_ROLLBACK_FAILED|DELETE_FAILED ]]; then
+          echo "⚠️  Stack $STACK_NAME is in failed state: $STACK_STATUS"
+          echo "🗑️  Force deleting stack..."
+          aws cloudformation delete-stack --stack-name $STACK_NAME
+          echo "⏳ Waiting for stack deletion..."
+          aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME || echo "Stack deletion completed or timed out"
+        elif [[ "$STACK_STATUS" != "NOT_EXISTS" ]]; then
+          echo "✅ Stack $STACK_NAME status: $STACK_STATUS"
+        fi
       - sam build
       - sam package --s3-bucket $ARTIFACTS_BUCKET --output-template-file packaged-template.yaml
 
