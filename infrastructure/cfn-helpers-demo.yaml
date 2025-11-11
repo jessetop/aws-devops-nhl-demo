@@ -1,0 +1,231 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation Helper Scripts Demo - Teaching Example'
+
+Parameters:
+  StackName:
+    Type: String
+    Default: 'nhl-stats'
+    Description: 'Stack name prefix for unique resource naming'
+
+Resources:
+  # Demo EC2 Instance showcasing all CloudFormation helper scripts
+  CFNHelpersDemoInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0c02fb55956c7d316  # Amazon Linux 2023
+      InstanceType: t3.micro
+      IamInstanceProfile: !Ref CFNHelperInstanceProfile
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          
+          # Install CloudFormation helper scripts (pre-installed on Amazon Linux)
+          # cfn-init: Reads and processes metadata from CloudFormation template
+          # cfn-signal: Signals CloudFormation about resource status
+          # cfn-get-metadata: Retrieves metadata for a resource
+          # cfn-hup: Daemon that detects changes in resource metadata
+          
+          # 1. CFN-INIT: Initialize the instance based on metadata
+          /opt/aws/bin/cfn-init -v \
+            --stack ${AWS::StackName} \
+            --resource CFNHelpersDemoInstance \
+            --configsets InstallAndRun \
+            --region ${AWS::Region}
+          
+          # 2. CFN-SIGNAL: Signal success/failure back to CloudFormation
+          /opt/aws/bin/cfn-signal -e $? \
+            --stack ${AWS::StackName} \
+            --resource CFNHelpersDemoInstance \
+            --region ${AWS::Region}
+      
+      Tags:
+        - Key: Name
+          Value: !Sub '${StackName}-cfn-helpers-demo'
+        - Key: Purpose
+          Value: 'CloudFormation Helper Scripts Demo'
+    
+    # METADATA: Configuration for cfn-init
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          InstallAndRun:
+            - Install
+            - Configure
+            - Services
+        
+        Install:
+          packages:
+            yum:
+              httpd: []
+              wget: []
+          
+          files:
+            # Demo web page showing helper script usage
+            "/var/www/html/index.html":
+              content: !Sub |
+                <!DOCTYPE html>
+                <html>
+                <head><title>CFN Helper Scripts Demo</title></head>
+                <body>
+                  <h1>🏒 NHL Stats - CloudFormation Helper Scripts Demo</h1>
+                  <h2>This instance demonstrates:</h2>
+                  <ul>
+                    <li><strong>cfn-init</strong>: Installed Apache, created this page</li>
+                    <li><strong>cfn-signal</strong>: Signaled successful initialization</li>
+                    <li><strong>cfn-get-metadata</strong>: Can retrieve this metadata</li>
+                    <li><strong>cfn-hup</strong>: Monitors for template changes</li>
+                  </ul>
+                  <p>Stack: ${AWS::StackName}</p>
+                  <p>Region: ${AWS::Region}</p>
+                  <p>Instance ID: <span id="instance-id">Loading...</span></p>
+                  <script>
+                    fetch('http://169.254.169.254/latest/meta-data/instance-id')
+                      .then(r => r.text())
+                      .then(id => document.getElementById('instance-id').textContent = id);
+                  </script>
+                </body>
+                </html>
+              mode: '000644'
+              owner: root
+              group: root
+            
+            # CFN-HUP configuration file
+            "/etc/cfn/cfn-hup.conf":
+              content: !Sub |
+                [main]
+                stack=${AWS::StackName}
+                region=${AWS::Region}
+                # CFN-HUP: Detects changes in resource metadata
+                # Polls CloudFormation every 15 minutes for changes
+                interval=15
+              mode: '000400'
+              owner: root
+              group: root
+            
+            # CFN-HUP hooks configuration
+            "/etc/cfn/hooks.d/cfn-auto-reloader.conf":
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.CFNHelpersDemoInstance.Metadata.AWS::CloudFormation::Init
+                # When metadata changes, re-run cfn-init
+                action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource CFNHelpersDemoInstance --configsets InstallAndRun --region ${AWS::Region}
+                runas=root
+              mode: '000400'
+              owner: root
+              group: root
+            
+            # Demo script showing cfn-get-metadata usage
+            "/home/ec2-user/demo-get-metadata.sh":
+              content: !Sub |
+                #!/bin/bash
+                echo "=== CFN-GET-METADATA Demo ==="
+                echo "Retrieving metadata for this instance..."
+                
+                # CFN-GET-METADATA: Retrieve metadata for a resource
+                /opt/aws/bin/cfn-get-metadata \
+                  --stack ${AWS::StackName} \
+                  --resource CFNHelpersDemoInstance \
+                  --region ${AWS::Region}
+                
+                echo ""
+                echo "=== Instance Metadata ==="
+                curl -s http://169.254.169.254/latest/meta-data/instance-id
+                echo ""
+              mode: '000755'
+              owner: ec2-user
+              group: ec2-user
+        
+        Configure:
+          commands:
+            01_enable_httpd:
+              command: "systemctl enable httpd"
+            02_start_httpd:
+              command: "systemctl start httpd"
+        
+        Services:
+          sysvinit:
+            httpd:
+              enabled: true
+              ensureRunning: true
+            cfn-hup:
+              enabled: true
+              ensureRunning: true
+              files:
+                - "/etc/cfn/cfn-hup.conf"
+                - "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+    
+    # CreationPolicy: Wait for cfn-signal before considering resource complete
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M  # Wait up to 15 minutes for signal
+        Count: 1        # Expect 1 success signal
+
+  # IAM Role for the instance to access CloudFormation
+  CFNHelperInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${StackName}-CFNHelperInstanceRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Policies:
+        - PolicyName: CFNHelperPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Allow cfn-signal and cfn-get-metadata to work
+              - Effect: Allow
+                Action:
+                  - cloudformation:SignalResource
+                  - cloudformation:DescribeStackResource
+                  - cloudformation:DescribeStackResources
+                Resource: '*'
+
+  CFNHelperInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref CFNHelperInstanceRole
+
+  # Security Group allowing HTTP access to see the demo page
+  CFNHelperSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${StackName}-cfn-helpers-sg'
+      GroupDescription: 'Security group for CFN helpers demo instance'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: 'HTTP access to demo page'
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: 'SSH access for debugging'
+
+Outputs:
+  DemoInstanceId:
+    Description: 'Instance ID of the CFN helpers demo'
+    Value: !Ref CFNHelpersDemoInstance
+  
+  DemoWebsiteURL:
+    Description: 'URL to view the demo page'
+    Value: !Sub 'http://${CFNHelpersDemoInstance.PublicDnsName}'
+  
+  SSHCommand:
+    Description: 'SSH command to connect to the instance'
+    Value: !Sub 'ssh -i your-key.pem ec2-user@${CFNHelpersDemoInstance.PublicDnsName}'
+  
+  GetMetadataCommand:
+    Description: 'Command to run the cfn-get-metadata demo'
+    Value: '/home/ec2-user/demo-get-metadata.sh'

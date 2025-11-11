@@ -73,16 +73,9 @@ if [ -z "$GITHUB_TOKEN" ]; then
     exit 1
 fi
 
-# Check and install eksctl if needed
-echo "Checking eksctl installation..."
-if ! command -v eksctl &> /dev/null || ! eksctl version &> /dev/null; then
-    echo "Installing eksctl..."
-    curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
-    sudo mv /tmp/eksctl /usr/local/bin
-    echo "✅ eksctl installed successfully"
-else
-    echo "✅ eksctl already installed: $(eksctl version --output json | grep -o '"GitTag":"[^"]*' | cut -d'"' -f4)"
-fi
+# Install required tools
+source utils/install-eksctl.sh
+source utils/install-kubectl.sh
 
 # Enable strict error handling
 set -e
