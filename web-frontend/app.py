@@ -39,62 +39,68 @@ def lambda_handler(event, context):
                 <h2>Service Status</h2>
                 <div id="service-status">
                     <p>✅ Web Frontend: Active (Lambda + CodePipeline)</p>
-                    <p>🔄 NHL API Service: Ready</p>
-                    <p>🔄 Stats Processing: Ready</p>
+                    <p>🔄 NHL API Service: <span id="nhl-api-status">Check endpoint</span></p>
+                    <p>🔄 Stats Processing: <span id="stats-processing-status">Check endpoint</span></p>
+                    <p><small>Update API endpoints in code to connect to real services</small></p>
                 </div>
             </div>
         </div>
         
         <script>
+            // API endpoints - these will be dynamically populated
+            const NHL_API_ENDPOINT = 'https://YOUR_NHL_API_GATEWAY_URL/prod/nhl-stats';
+            const STATS_PROCESSING_ENDPOINT = 'http://YOUR_EKS_LOADBALANCER_URL/process-stats';
+            
             async function loadNHLStats() {
-                document.getElementById('nhl-stats').innerHTML = '<div class="loading">Loading NHL stats...</div>';
+                document.getElementById('nhl-stats').innerHTML = '<div class="loading">Loading NHL stats from Lambda...</div>';
                 try {
-                    // In a real implementation, this would call your NHL API Lambda
-                    const mockData = {
-                        timestamp: new Date().toISOString(),
-                        teams: [
-                            { team: 'Toronto Maple Leafs', wins: 25, losses: 15 },
-                            { team: 'Boston Bruins', wins: 30, losses: 10 },
-                            { team: 'Tampa Bay Lightning', wins: 28, losses: 12 }
-                        ]
-                    };
+                    const response = await fetch(NHL_API_ENDPOINT);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    const data = await response.json();
                     
                     let html = '<div class="stats-grid">';
-                    mockData.teams.forEach(team => {
-                        html += `<div><strong>${team.team}</strong><br>Wins: ${team.wins}, Losses: ${team.losses}</div>`;
+                    data.teams.forEach(team => {
+                        const teamStats = team.stats[0]?.splits[0]?.stat || {};
+                        html += `<div><strong>${team.team}</strong><br>`;
+                        html += `Wins: ${teamStats.wins || 'N/A'}, Losses: ${teamStats.losses || 'N/A'}<br>`;
+                        html += `Points: ${teamStats.pts || 'N/A'}</div>`;
                     });
                     html += '</div>';
-                    html += `<p><small>Last updated: ${mockData.timestamp}</small></p>`;
+                    html += `<p><small>Last updated: ${data.timestamp}</small></p>`;
+                    html += `<p><small>🚀 Data from NHL API Lambda (GitHub Actions)</small></p>`;
                     
                     document.getElementById('nhl-stats').innerHTML = html;
                 } catch (error) {
-                    document.getElementById('nhl-stats').innerHTML = '<div style="color: red;">Error loading stats</div>';
+                    console.error('NHL API Error:', error);
+                    document.getElementById('nhl-stats').innerHTML = `<div style="color: red;">Error loading NHL stats: ${error.message}<br><small>Check if NHL API Lambda is deployed</small></div>`;
                 }
             }
             
             async function loadProcessedStats() {
-                document.getElementById('processed-stats').innerHTML = '<div class="loading">Loading processed stats...</div>';
+                document.getElementById('processed-stats').innerHTML = '<div class="loading">Loading processed stats from EKS...</div>';
                 try {
-                    // Mock processed stats data
-                    const mockProcessed = {
-                        processed_teams: 10,
-                        data: [
-                            { name: 'Atlantic Division Leaders', conference: 'Eastern' },
-                            { name: 'Metropolitan Division Leaders', conference: 'Eastern' },
-                            { name: 'Central Division Leaders', conference: 'Western' }
-                        ]
-                    };
+                    const response = await fetch(STATS_PROCESSING_ENDPOINT);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    const data = await response.json();
                     
                     let html = '<div class="stats-grid">';
-                    mockProcessed.data.forEach(item => {
-                        html += `<div><strong>${item.name}</strong><br>Conference: ${item.conference}</div>`;
+                    data.data.forEach(team => {
+                        html += `<div><strong>${team.name}</strong><br>`;
+                        html += `Division: ${team.division}<br>`;
+                        html += `Conference: ${team.conference}</div>`;
                     });
                     html += '</div>';
-                    html += `<p><small>Processed ${mockProcessed.processed_teams} teams</small></p>`;
+                    html += `<p><small>Processed ${data.processed_teams} teams</small></p>`;
+                    html += `<p><small>🚀 Data from EKS Stats Processing (CodePipeline)</small></p>`;
                     
                     document.getElementById('processed-stats').innerHTML = html;
                 } catch (error) {
-                    document.getElementById('processed-stats').innerHTML = '<div style="color: red;">Error loading processed stats</div>';
+                    console.error('Stats Processing Error:', error);
+                    document.getElementById('processed-stats').innerHTML = `<div style="color: red;">Error loading processed stats: ${error.message}<br><small>Check if EKS service is deployed and accessible</small></div>`;
                 }
             }
         </script>

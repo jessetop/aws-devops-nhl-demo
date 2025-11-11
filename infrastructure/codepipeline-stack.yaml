@@ -55,6 +55,49 @@ Resources:
         Type: CODEPIPELINE
         BuildSpec: stats-processing-service/buildspec.yml
 
+  # CodeBuild Project for Stats Processing EKS Deploy
+  StatsProcessingDeploy:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${StackName}-stats-processing-deploy'
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+        EnvironmentVariables:
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: CLUSTER_NAME
+            Value: !Sub '${StackName}-cluster'
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: |
+          version: 0.2
+          phases:
+            install:
+              runtime-versions:
+                python: 3.8
+              commands:
+                - curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/kubectl
+                - chmod +x ./kubectl
+                - mv ./kubectl /usr/local/bin
+            pre_build:
+              commands:
+                - echo Updating kubeconfig...
+                - aws eks update-kubeconfig --region $AWS_DEFAULT_REGION --name $CLUSTER_NAME
+            build:
+              commands:
+                - echo Deploying to EKS...
+                - kubectl apply -f stats-processing-service/k8s-deployment.yaml
+                - kubectl rollout status deployment/stats-processing
+            post_build:
+              commands:
+                - echo Deployment completed
+                - kubectl get services stats-processing-service
+
   # CodeBuild Project for Web Frontend
   WebFrontendBuild:
     Type: AWS::CodeBuild::Project
@@ -112,6 +155,18 @@ Resources:
               InputArtifacts:
                 - Name: SourceOutput
               OutputArtifacts:
+                - Name: BuildOutput
+        - Name: Deploy
+          Actions:
+            - Name: DeployToEKS
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName: !Ref StatsProcessingDeploy
+              InputArtifacts:
                 - Name: BuildOutput
 
   # CodePipeline for Web Frontend
@@ -193,6 +248,8 @@ Resources:
                   - ecr:*
                   - s3:*
                   - logs:*
+                  - eks:DescribeCluster
+                  - eks:ListClusters
                 Resource: '*'
 
   CodePipelineRole:
