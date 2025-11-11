@@ -1,1 +1,1 @@
-.\setup-infrastructure.ps1 -GitHubOrg "jessetop" -GitHubToken $GIT_NHL_TOKEN
+./linux/setup-infrastructure.sh -GitHubOrg "jessetop" -GitHubToken $GITHUB_TOKEN

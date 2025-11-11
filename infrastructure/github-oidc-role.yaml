@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'GitHub OIDC Role for secure deployments'
+Description: 'GitHub OIDC Role for secure deployments (OIDC provider created via CLI)'
 
 Parameters:
   GitHubOrg:
@@ -10,15 +10,8 @@ Parameters:
     Description: 'GitHub repository name'
 
 Resources:
-  GitHubOIDCProvider:
-    Type: AWS::IAM::OIDCIdentityProvider
-    Properties:
-      Url: https://token.actions.githubusercontent.com
-      ClientIdList:
-        - sts.amazonaws.com
-      ThumbprintList:
-        - 6938fd4d98bab03faadb97b34396831e3780aea1
-
+  # Note: OIDC Provider created via CLI because AWS::IAM::OIDCIdentityProvider 
+  # resource type is not available in all AWS regions
   GitHubActionsRole:
     Type: AWS::IAM::Role
     Properties:
@@ -28,7 +21,7 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              Federated: !Ref GitHubOIDCProvider
+              Federated: !Sub 'arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com'
             Action: sts:AssumeRoleWithWebIdentity
             Condition:
               StringEquals:
