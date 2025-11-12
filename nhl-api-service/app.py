@@ -17,30 +17,32 @@ def lambda_handler(event, context):
     
     http = urllib3.PoolManager()
     
-    # NHL API endpoints
-    teams_url = "https://statsapi.web.nhl.com/api/v1/teams"
+    # NHL API endpoints - using NHL's current API
+    teams_url = "https://api-web.nhle.com/v1/standings/now"
     
     try:
         logger.info(f"Fetching teams from: {teams_url}")
-        # Get teams data
+        # Get standings data (simpler than old API)
         teams_response = http.request('GET', teams_url)
         logger.info(f"Teams response status: {teams_response.status}")
-        teams_data = json.loads(teams_response.data.decode('utf-8'))
-        logger.info(f"Found {len(teams_data.get('teams', []))} teams")
+        standings_data = json.loads(teams_response.data.decode('utf-8'))
         
-        # Get current season stats for first few teams
+        # Extract team data from standings
         stats = []
-        for team in teams_data['teams'][:5]:  # Limit for demo
-            team_id = team['id']
-            stats_url = f"https://statsapi.web.nhl.com/api/v1/teams/{team_id}/stats"
-            
-            stats_response = http.request('GET', stats_url)
-            team_stats = json.loads(stats_response.data.decode('utf-8'))
-            
+        standings = standings_data.get('standings', [])
+        for standing in standings[:5]:  # Limit for demo
             stats.append({
-                'team': team['name'],
-                'id': team_id,
-                'stats': team_stats.get('stats', [])
+                'team': standing.get('teamName', {}).get('default', 'Unknown Team'),
+                'id': standing.get('teamAbbrev', {}).get('default', 'UNK'),
+                'stats': [{
+                    'splits': [{
+                        'stat': {
+                            'wins': standing.get('wins', 0),
+                            'losses': standing.get('losses', 0),
+                            'pts': standing.get('points', 0)
+                        }
+                    }]
+                }]
             })
         
         return {

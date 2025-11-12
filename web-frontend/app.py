@@ -9,7 +9,7 @@ logger.setLevel(logging.INFO)
 def lambda_handler(event, context):
     try:
         logger.info("Web frontend Lambda started")
-    # Get service endpoints from environment variables
+        # Get service endpoints from environment variables
     nhl_api_endpoint = os.environ.get('NHL_API_ENDPOINT', 'https://YOUR_NHL_API_GATEWAY_URL/prod/nhl-stats')
     stats_processing_endpoint = os.environ.get('STATS_PROCESSING_ENDPOINT', 'http://YOUR_EKS_LOADBALANCER_URL/process-stats')
     
