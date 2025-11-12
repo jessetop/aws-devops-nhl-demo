@@ -59,11 +59,9 @@ phases:
           echo "✅ Stack $STACK_NAME status: $STACK_STATUS"
         fi
       - sam build
-      - echo "✅ Endpoints discovered: NHL_API=$NHL_API_URL, EKS=$EKS_URL"
-      - echo '{"NHLApiEndpoint":"'$NHL_API_URL'","StatsProcessingEndpoint":"'$EKS_URL'"}' > parameters.json
+      - echo "✅ Endpoints discovered and will be updated post-deployment"
       - sam package --s3-bucket $ARTIFACTS_BUCKET --output-template-file packaged-template.yaml
 
 artifacts:
   files:
     - web-frontend/packaged-template.yaml
-    - web-frontend/parameters.json
