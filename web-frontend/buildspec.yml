@@ -59,21 +59,7 @@ phases:
           echo "✅ Stack $STACK_NAME status: $STACK_STATUS"
         fi
       - sam build
-      - |
-        # Update template with discovered endpoints
-        if [ -n "$NHL_API_URL" ] && [ "$NHL_API_URL" != "https://YOUR_NHL_API_GATEWAY_URL/prod/nhl-stats" ]; then
-          echo "📝 Updating template with discovered endpoints..."
-          # Create a parameter overrides file
-          cat > parameter-overrides.json << EOF
-        {
-          "NHLApiEndpoint": "$NHL_API_URL",
-          "StatsProcessingEndpoint": "$EKS_URL"
-        }
-        EOF
-          echo "✅ Parameter overrides created"
-        else
-          echo "⚠️  Using default placeholder endpoints"
-        fi
+      - echo "✅ Endpoints discovered and will be updated post-deployment"
       - sam package --s3-bucket $ARTIFACTS_BUCKET --output-template-file packaged-template.yaml
 
 artifacts:
