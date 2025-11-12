@@ -1,8 +1,14 @@
 import json
 import urllib3
 import os
+import logging
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
+    try:
+        logger.info("Web frontend Lambda started")
     # Get service endpoints from environment variables
     nhl_api_endpoint = os.environ.get('NHL_API_ENDPOINT', 'https://YOUR_NHL_API_GATEWAY_URL/prod/nhl-stats')
     stats_processing_endpoint = os.environ.get('STATS_PROCESSING_ENDPOINT', 'http://YOUR_EKS_LOADBALANCER_URL/process-stats')
@@ -162,10 +168,19 @@ def lambda_handler(event, context):
     </html>
     """
     
-    return {
-        'statusCode': 200,
-        'headers': {
-            'Content-Type': 'text/html; charset=utf-8',
-        },
-        'body': html_content
-    }
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'text/html; charset=utf-8',
+            },
+            'body': html_content
+        }
+    except Exception as e:
+        logger.error(f"Error in web frontend Lambda: {str(e)}")
+        return {
+            'statusCode': 500,
+            'headers': {
+                'Content-Type': 'text/html; charset=utf-8',
+            },
+            'body': f'<html><body><h1>Error</h1><p>Internal server error: {str(e)}</p></body></html>'
+        }
