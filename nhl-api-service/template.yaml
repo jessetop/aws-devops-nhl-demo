@@ -1,6 +1,13 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
+Globals:
+  Api:
+    Cors:
+      AllowMethods: "'GET,OPTIONS'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"
+
 Resources:
   NHLApiFunction:
     Type: AWS::Serverless::Function
@@ -15,10 +22,6 @@ Resources:
           Properties:
             Path: /nhl-stats
             Method: get
-            Cors:
-              AllowMethods: "'GET,OPTIONS'"
-              AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-              AllowOrigin: "'*'"
 
 Outputs:
   NHLApiUrl:
