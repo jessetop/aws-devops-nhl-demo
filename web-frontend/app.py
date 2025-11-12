@@ -92,10 +92,10 @@ def lambda_handler(event, context):
             function checkRegionMismatch() {{
                 const warnings = [];
                 if (NHL_API_REGION !== 'unknown' && NHL_API_REGION !== CURRENT_REGION) {{
-                    warnings.push(`NHL API in {nhl_api_region}, Web Frontend in {current_region}`);
+                    warnings.push('NHL API in ' + NHL_API_REGION + ', Web Frontend in ' + CURRENT_REGION);
                 }}
                 if (EKS_REGION !== 'unknown' && EKS_REGION !== CURRENT_REGION) {{
-                    warnings.push(`EKS in {eks_region}, Web Frontend in {current_region}`);
+                    warnings.push('EKS in ' + EKS_REGION + ', Web Frontend in ' + CURRENT_REGION);
                 }}
                 if (warnings.length > 0) {{
                     document.getElementById('region-warning').innerHTML = '⚠️ Region Mismatch: ' + warnings.join(', ');
@@ -131,7 +131,7 @@ def lambda_handler(event, context):
                     document.getElementById('nhl-api-status').innerHTML = '✅ Active';
                 } catch (error) {
                     console.error('NHL API Error:', error);
-                    document.getElementById('nhl-stats').innerHTML = `<div style="color: red;">Error loading NHL stats: ${error.message}<br><small>Check if NHL API Lambda is deployed in ${NHL_API_REGION}</small></div>`;
+                    document.getElementById('nhl-stats').innerHTML = '<div style="color: red;">Error loading NHL stats: ' + error.message + '<br><small>Check if NHL API Lambda is deployed in ' + NHL_API_REGION + '</small></div>';
                     document.getElementById('nhl-api-status').innerHTML = '❌ Failed';
                 }
             }
@@ -159,7 +159,7 @@ def lambda_handler(event, context):
                     document.getElementById('stats-processing-status').innerHTML = '✅ Active';
                 } catch (error) {
                     console.error('Stats Processing Error:', error);
-                    document.getElementById('processed-stats').innerHTML = `<div style="color: red;">Error loading processed stats: ${error.message}<br><small>Check if EKS service is deployed in ${EKS_REGION}</small></div>`;
+                    document.getElementById('processed-stats').innerHTML = '<div style="color: red;">Error loading processed stats: ' + error.message + '<br><small>Check if EKS service is deployed in ' + EKS_REGION + '</small></div>';
                     document.getElementById('stats-processing-status').innerHTML = '❌ Failed';
                 }
             }
