@@ -59,9 +59,19 @@ phases:
           echo "✅ Stack $STACK_NAME status: $STACK_STATUS"
         fi
       - sam build
-      - echo "✅ Endpoints discovered and will be updated post-deployment"
+      - echo "✅ Endpoints discovered: NHL_API=$NHL_API_URL, EKS=$EKS_URL"
+      - |
+        # Create parameters file for CloudFormation
+        cat > parameters.json << EOF
+        {
+          "NHLApiEndpoint": "$NHL_API_URL",
+          "StatsProcessingEndpoint": "$EKS_URL"
+        }
+        EOF
+        echo "📝 Created parameters.json with discovered endpoints"
       - sam package --s3-bucket $ARTIFACTS_BUCKET --output-template-file packaged-template.yaml
 
 artifacts:
   files:
     - web-frontend/packaged-template.yaml
+    - web-frontend/parameters.json
