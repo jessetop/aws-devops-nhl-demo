@@ -10,30 +10,30 @@ def lambda_handler(event, context):
     try:
         logger.info("Web frontend Lambda started")
         # Get service endpoints from environment variables
-    nhl_api_endpoint = os.environ.get('NHL_API_ENDPOINT', 'https://YOUR_NHL_API_GATEWAY_URL/prod/nhl-stats')
-    stats_processing_endpoint = os.environ.get('STATS_PROCESSING_ENDPOINT', 'http://YOUR_EKS_LOADBALANCER_URL/process-stats')
-    
-    # Get current AWS region
-    current_region = os.environ.get('AWS_REGION', 'unknown')
-    
-    # Extract regions from endpoints for comparison
-    nhl_api_region = 'unknown'
-    eks_region = 'unknown'
-    
-    if 'execute-api' in nhl_api_endpoint:
-        try:
-            nhl_api_region = nhl_api_endpoint.split('.')[2]
-        except:
-            pass
-    
-    if 'elb.amazonaws.com' in stats_processing_endpoint:
-        try:
-            eks_region = stats_processing_endpoint.split('.')[1]
-        except:
-            pass
-    
-    # Simple HTML page that displays NHL stats
-    html_content = f"""
+        nhl_api_endpoint = os.environ.get('NHL_API_ENDPOINT', 'https://YOUR_NHL_API_GATEWAY_URL/prod/nhl-stats')
+        stats_processing_endpoint = os.environ.get('STATS_PROCESSING_ENDPOINT', 'http://YOUR_EKS_LOADBALANCER_URL/process-stats')
+        
+        # Get current AWS region
+        current_region = os.environ.get('AWS_REGION', 'unknown')
+        
+        # Extract regions from endpoints for comparison
+        nhl_api_region = 'unknown'
+        eks_region = 'unknown'
+        
+        if 'execute-api' in nhl_api_endpoint:
+            try:
+                nhl_api_region = nhl_api_endpoint.split('.')[2]
+            except:
+                pass
+        
+        if 'elb.amazonaws.com' in stats_processing_endpoint:
+            try:
+                eks_region = stats_processing_endpoint.split('.')[1]
+            except:
+                pass
+        
+        # Simple HTML page that displays NHL stats
+        html_content = f"""
     <!DOCTYPE html>
     <html>
     <head>
