@@ -15,6 +15,10 @@ Resources:
           Properties:
             Path: /nhl-stats
             Method: get
+            Cors:
+              AllowMethods: "'GET,OPTIONS'"
+              AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              AllowOrigin: "'*'"
 
 Outputs:
   NHLApiUrl:
