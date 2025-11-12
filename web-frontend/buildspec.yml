@@ -60,13 +60,7 @@ phases:
         fi
       - sam build
       - echo "✅ Endpoints discovered: NHL_API=$NHL_API_URL, EKS=$EKS_URL"
-      - |
-        cat > parameters.json << EOF
-        {
-          "NHLApiEndpoint": "$NHL_API_URL",
-          "StatsProcessingEndpoint": "$EKS_URL"
-        }
-        EOF
+      - echo '{"NHLApiEndpoint":"'$NHL_API_URL'","StatsProcessingEndpoint":"'$EKS_URL'"}' > parameters.json
       - sam package --s3-bucket $ARTIFACTS_BUCKET --output-template-file packaged-template.yaml
 
 artifacts:
