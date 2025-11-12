@@ -29,6 +29,11 @@ Resources:
           Properties:
             Path: /
             Method: get
+        ProxyApi:
+          Type: Api
+          Properties:
+            Path: /proxy/eks
+            Method: get
 
 Outputs:
   WebFrontendUrl:

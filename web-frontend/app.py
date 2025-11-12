@@ -9,6 +9,30 @@ logger.setLevel(logging.INFO)
 def lambda_handler(event, context):
     try:
         logger.info("Web frontend Lambda started")
+        
+        # Handle proxy requests for EKS service to avoid mixed content
+        if event.get('path') == '/proxy/eks':
+            stats_processing_endpoint = os.environ.get('STATS_PROCESSING_ENDPOINT', 'http://YOUR_EKS_LOADBALANCER_URL/process-stats')
+            http = urllib3.PoolManager()
+            try:
+                response = http.request('GET', stats_processing_endpoint)
+                return {
+                    'statusCode': response.status,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': response.data.decode('utf-8')
+                }
+            except Exception as e:
+                return {
+                    'statusCode': 500,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({'error': str(e)})
+                }
         # Get service endpoints from environment variables
         nhl_api_endpoint = os.environ.get('NHL_API_ENDPOINT', 'https://YOUR_NHL_API_GATEWAY_URL/prod/nhl-stats')
         stats_processing_endpoint = os.environ.get('STATS_PROCESSING_ENDPOINT', 'http://YOUR_EKS_LOADBALANCER_URL/process-stats')
@@ -139,7 +163,7 @@ def lambda_handler(event, context):
         async function loadProcessedStats() {
             document.getElementById('processed-stats').innerHTML = '<div class="loading">Loading processed stats from EKS...</div>';
             try {
-                const response = await fetch(STATS_PROCESSING_ENDPOINT);
+                const response = await fetch(window.location.origin + '/proxy/eks');
                 if (!response.ok) {
                     throw new Error('HTTP ' + response.status);
                 }
@@ -172,6 +196,9 @@ def lambda_handler(event, context):
             'statusCode': 200,
             'headers': {
                 'Content-Type': 'text/html; charset=utf-8',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+                'Access-Control-Allow-Methods': 'GET,OPTIONS'
             },
             'body': html_content
         }
