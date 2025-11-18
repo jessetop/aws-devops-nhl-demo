@@ -69,3 +69,20 @@ jobs:
         
         sam build
         sam deploy --no-confirm-changeset --no-fail-on-empty-changeset --stack-name nhl-api-service --capabilities CAPABILITY_IAM --resolve-s3
+    
+    - name: Update Web Frontend Environment Variables
+      run: |
+        # Get the new NHL API URL
+        NHL_API_URL=$(aws cloudformation describe-stacks --stack-name nhl-api-service --query 'Stacks[0].Outputs[?OutputKey==`NHLApiUrl`].OutputValue' --output text)
+        echo "New NHL API URL: $NHL_API_URL"
+        
+        # Find and update the web frontend Lambda
+        LAMBDA_FUNCTION=$(aws cloudformation describe-stack-resources --stack-name nhl-stats-web-frontend-stack --query "StackResources[?ResourceType=='AWS::Lambda::Function'].PhysicalResourceId" --output text 2>/dev/null || echo "")
+        
+        if [ -n "$LAMBDA_FUNCTION" ]; then
+          echo "Updating Lambda function: $LAMBDA_FUNCTION"
+          aws lambda update-function-configuration --function-name $LAMBDA_FUNCTION --environment Variables="{NHL_API_ENDPOINT=$NHL_API_URL,STATS_PROCESSING_ENDPOINT=http://YOUR_EKS_LOADBALANCER_URL/process-stats}"
+          echo "✅ Updated web frontend Lambda environment variables"
+        else
+          echo "⚠️  Web frontend Lambda not found"
+        fi

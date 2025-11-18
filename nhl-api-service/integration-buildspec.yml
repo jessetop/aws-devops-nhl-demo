@@ -1,0 +1,17 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+    commands:
+      - pip install requests
+  
+  build:
+    commands:
+      - echo "Running integration tests against deployed API..."
+      - python integration-tests.py $API_ENDPOINT_URL
+
+artifacts:
+  files:
+    - integration-tests.py

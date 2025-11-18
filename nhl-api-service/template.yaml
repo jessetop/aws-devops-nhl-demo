@@ -22,6 +22,11 @@ Resources:
           Properties:
             Path: /nhl-stats
             Method: get
+        OptionsApi:
+          Type: Api
+          Properties:
+            Path: /nhl-stats
+            Method: options
 
 Outputs:
   NHLApiUrl:
